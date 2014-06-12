@@ -2,12 +2,17 @@
 <head>
 	<script src="/js/main.js"></script>
 	<script src="/js/jquery-1.11.1.js"></script>
+	<link rel="stylesheet" href="css/metro-bootstrap.css">
+	<link rel="stylesheet" href="css/iconFont.min.css">
 	<link rel="stylesheet" type="text/css" href="/css/main.css"/>
+	<script src="js/metro.min.js"></script>
+
 </head>
-<body onload="browse('/')">
+<body onload="browse('/')" class="metro">
 <div id="actions">
 	<input type="button" value="Create Folder" onclick="createFolder()"></input>
 </div>
+<nav id="navigation_bar" class="breadcrumbs mini"></nav>
 <div id="browsing"/>
 </body>
 </html>

@@ -11,12 +11,17 @@ import (
 	"strconv"
 	"time"
 	"path"
+	"net/url"
 )
 
+//ServeContent(w ResponseWriter, req *Request, name string, modtime time.Time, content io.ReadSeeker)
+
+//CommandHandler is used to keep information about issued commands
 type CommandHandler struct {
 	config       *Configuration
 	commandsList []*Command
 	commandIndex int
+	downloadLinks map[string]string
 }
 
 func (c *CommandHandler) save(command *Command) {
@@ -38,7 +43,26 @@ func NewCommandHandler(config *Configuration) (c *CommandHandler) {
 	c.config = config
 	c.commandsList = make([]*Command, 10)
 	c.commandIndex = 0
+	c.downloadLinks = make(map[string]string)
 	return c
+}
+
+
+
+func (c *CommandHandler) downloadLink(command *Command, resp chan<- bool) {
+	if nil == command.GenerateDownloadLink {
+		LOG_DEBUG.Println("Missing input configuration")
+		command.State.Status = ERROR
+		command.State.ErrorCode = 1
+		resp <- false
+		return
+	}
+	path := c.config.RootPrefix + command.GenerateDownloadLink.Path
+	result := ComputeHmac256(path, c.config.PrivateKey)
+	command.GenerateDownloadLink.Result = url.QueryEscape(result)
+	c.downloadLinks[result] = path
+	resp <- true
+
 }
 
 //Handle removal of an item
@@ -140,6 +164,7 @@ func (c *CommandHandler) browseCommand(command *Command, resp chan<- bool) {
 	resp <- true
 }
 
+
 //Handle Request on /commands
 //Only GET and POST request are available
 func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
@@ -169,6 +194,9 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		go c.createFolderCommand(command, channel)
 	} else if command.Name == EnumBrowserDeleteItem {
 		go c.deleteItemCommand(command, channel)
+
+	} else if command.Name == EnumBrowserDownloadLink{
+		go c.downloadLink(command, channel)
 	} else {
 		return
 	}
@@ -201,12 +229,26 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, string(b))
 }
 
+func (c *CommandHandler)Download(w http.ResponseWriter, r *http.Request){
+	vars := mux.Vars(r)
+	file := vars["file"]
+	LOG_DEBUG.Println("Request for downloading following file we've got ", file, c.downloadLinks)
+
+	path, found := c.downloadLinks[file]
+	if (found){
+		http.ServeFile(w, r, path)
+	}else{
+		io.WriteString(w, "Download link is unavailable. Try renewing link")
+	}
+}
+
 type EnumAction string
 
 const (
 	EnumBrowserBrowse       EnumAction = "browser.browse"
 	EnumBrowserCreateFolder EnumAction = "browser.create_folder"
 	EnumBrowserDeleteItem   EnumAction = "browser.delete_item"
+	EnumBrowserDownloadLink EnumAction = "browser.download_link"
 	EnumDebugLongRequest    EnumAction = "debug.long_request"
 )
 
@@ -246,6 +288,11 @@ type CommandDeleteItem struct {
 	Path string `json:"path"`
 }
 
+type CommandDownloadLink struct {
+	Path string `json:"path"`
+	Result string `json:"download_link"`
+}
+
 type Command struct {
 	Name         EnumAction           `json:"name"`       // Name of action Requested
 	CommandId    string               `json:"command_id"` // Command Id returned by client when timeout is reached
@@ -254,4 +301,5 @@ type Command struct {
 	Browse       *CommandBrowse       `json:"browse_command,omitempty"`
 	Delete       *CommandDeleteItem   `json:"delete_command,omitempty"`
 	CreateFolder *CommandCreateFolder `json:"create_folder_command,omitempty"`
+	GenerateDownloadLink *CommandDownloadLink `json:"download_link_command"`
 }
