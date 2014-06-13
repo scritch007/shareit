@@ -5,6 +5,37 @@
 	background-color: grey;
 }
 
+.spacer{
+	width:2px;
+}
+#download_link_popup{
+	position: absolute;
+	left:25%;
+	top:25%;
+	width:50%;
+	height:200px;
+}
+
+#delete_item_popup{
+	position: absolute;
+	left:25%;
+	top:25%;
+	width:50%;
+	height:200px;
+}
+
+#download_link_popup > .content > div {
+	height: 150px;
+	vertical-align: middle;
+	display: table-cell;
+	padding-left: 20px;
+}
+
+#download_link_popup > .content > div > div > input {
+	width: 500px;
+	padding-left: 20px;
+}
+
 /*#browsing{
 	width:600px;
 }
