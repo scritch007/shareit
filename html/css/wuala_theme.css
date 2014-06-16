@@ -1,0 +1,37 @@
+.window{
+	background-color: white;
+	border-color: #ef4135;
+	border-style: solid;
+}
+
+.window > .caption{
+	display: inline-block;
+	width: 100%;
+}
+.window > .caption > .title{
+	width: 90%;
+	display: inline-block;
+}
+
+.window > .content {
+	position:relative;
+	top:2px;
+	height:50%;
+}
+.window > .footer{
+	position: relative;
+	top: 2px;
+	height: 20%;
+}
+
+.window > .footer > .button{
+
+}
+
+.text{
+	display: inline-block;
+}
+
+.text > input{
+	display: inline-block;
+}

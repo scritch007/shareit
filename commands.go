@@ -7,20 +7,20 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"time"
-	"path"
-	"net/url"
 )
 
 //ServeContent(w ResponseWriter, req *Request, name string, modtime time.Time, content io.ReadSeeker)
 
 //CommandHandler is used to keep information about issued commands
 type CommandHandler struct {
-	config       *Configuration
-	commandsList []*Command
-	commandIndex int
+	config        *Configuration
+	commandsList  []*Command
+	commandIndex  int
 	downloadLinks map[string]string
 }
 
@@ -47,8 +47,6 @@ func NewCommandHandler(config *Configuration) (c *CommandHandler) {
 	return c
 }
 
-
-
 func (c *CommandHandler) downloadLink(command *Command, resp chan<- bool) {
 	if nil == command.GenerateDownloadLink {
 		LOG_DEBUG.Println("Missing input configuration")
@@ -57,10 +55,10 @@ func (c *CommandHandler) downloadLink(command *Command, resp chan<- bool) {
 		resp <- false
 		return
 	}
-	path := c.config.RootPrefix + command.GenerateDownloadLink.Path
-	result := ComputeHmac256(path, c.config.PrivateKey)
+	file_path := path.Join(c.config.RootPrefix, command.GenerateDownloadLink.Path)
+	result := ComputeHmac256(file_path, c.config.PrivateKey)
 	command.GenerateDownloadLink.Result = url.QueryEscape(result)
-	c.downloadLinks[result] = path
+	c.downloadLinks[result] = file_path
 	resp <- true
 
 }
@@ -74,7 +72,7 @@ func (c *CommandHandler) deleteItemCommand(command *Command, resp chan<- bool) {
 		resp <- false
 		return
 	}
-	item_path := c.config.RootPrefix + command.Delete.Path
+	item_path := path.Join(c.config.RootPrefix, command.Delete.Path)
 	LOG_DEBUG.Println("delete " + item_path)
 	fileInfo, err := os.Lstat(item_path)
 	if nil != err {
@@ -83,37 +81,37 @@ func (c *CommandHandler) deleteItemCommand(command *Command, resp chan<- bool) {
 		resp <- false
 		return
 	}
-	if fileInfo.IsDir(){
+	if fileInfo.IsDir() {
 		LOG_DEBUG.Println("Item is a directory")
 		//We are going to make something nice with a progress
 		fileList, err := ioutil.ReadDir(item_path)
-		if nil != err{
+		if nil != err {
 			LOG_DEBUG.Println("Couldn't list directory")
 			resp <- false
-			command.State.ErrorCode = 1//TODO
+			command.State.ErrorCode = 1 //TODO
 			return
 		}
 		nbElements := len(fileList)
 		success := true
-		for i, element := range fileList{
+		for i, element := range fileList {
 			element_path := path.Join(item_path, element.Name())
 			LOG_DEBUG.Println("Trying to remove " + element_path)
 			err = os.RemoveAll(element_path)
-			if nil != err{
+			if nil != err {
 				success = false
-				command.State.ErrorCode = 1//TODO
+				command.State.ErrorCode = 1 //TODO
 			}
 			command.State.Progress = i * 100 / nbElements
 		}
-		if nil != os.RemoveAll(item_path){
+		if nil != os.RemoveAll(item_path) {
 			success = false
 		}
 		resp <- success
-	}else{
+	} else {
 		err = os.Remove(item_path)
-		if nil == err{
+		if nil == err {
 			resp <- true
-		}else{
+		} else {
 			resp <- false
 		}
 	}
@@ -129,7 +127,7 @@ func (c *CommandHandler) createFolderCommand(command *Command, resp chan<- bool)
 		resp <- false
 		return
 	}
-	error := os.Mkdir(c.config.RootPrefix+command.CreateFolder.Path, os.ModePerm)
+	error := os.Mkdir(path.Join(c.config.RootPrefix, command.CreateFolder.Path), os.ModePerm)
 	if nil != error {
 		resp <- false
 	} else {
@@ -146,7 +144,7 @@ func (c *CommandHandler) browseCommand(command *Command, resp chan<- bool) {
 		resp <- false
 		return
 	}
-	fileList, err := ioutil.ReadDir(c.config.RootPrefix + command.Browse.Path)
+	fileList, err := ioutil.ReadDir(path.Join(c.config.RootPrefix, command.Browse.Path))
 	if nil != err {
 		fmt.Println("2 Failed with error code " + err.Error())
 		resp <- false
@@ -163,7 +161,6 @@ func (c *CommandHandler) browseCommand(command *Command, resp chan<- bool) {
 	time.Sleep(2)
 	resp <- true
 }
-
 
 //Handle Request on /commands
 //Only GET and POST request are available
@@ -195,7 +192,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	} else if command.Name == EnumBrowserDeleteItem {
 		go c.deleteItemCommand(command, channel)
 
-	} else if command.Name == EnumBrowserDownloadLink{
+	} else if command.Name == EnumBrowserDownloadLink {
 		go c.downloadLink(command, channel)
 	} else {
 		return
@@ -229,15 +226,15 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, string(b))
 }
 
-func (c *CommandHandler)Download(w http.ResponseWriter, r *http.Request){
+func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	file := vars["file"]
 	LOG_DEBUG.Println("Request for downloading following file we've got ", file, c.downloadLinks)
 
 	path, found := c.downloadLinks[file]
-	if (found){
+	if found {
 		http.ServeFile(w, r, path)
-	}else{
+	} else {
 		io.WriteString(w, "Download link is unavailable. Try renewing link")
 	}
 }
@@ -261,9 +258,9 @@ const (
 )
 
 type CommandStatus struct {
-	Status    int  `json:"status"`
+	Status    int `json:"status"`
 	Progress  int `json:"progress,omitempty"`
-	ErrorCode int  `json:"error_code,omitempty"`
+	ErrorCode int `json:"error_code,omitempty"`
 }
 
 type StorageItem struct {
@@ -289,17 +286,17 @@ type CommandDeleteItem struct {
 }
 
 type CommandDownloadLink struct {
-	Path string `json:"path"`
+	Path   string `json:"path"`
 	Result string `json:"download_link"`
 }
 
 type Command struct {
-	Name         EnumAction           `json:"name"`       // Name of action Requested
-	CommandId    string               `json:"command_id"` // Command Id returned by client when timeout is reached
-	State        CommandStatus        `json:"state"`
-	Timeout      int                  `json:"timeout"` // Result should be returned before timeout, or client will have to poll using CommandId
-	Browse       *CommandBrowse       `json:"browse_command,omitempty"`
-	Delete       *CommandDeleteItem   `json:"delete_command,omitempty"`
-	CreateFolder *CommandCreateFolder `json:"create_folder_command,omitempty"`
+	Name                 EnumAction           `json:"name"`       // Name of action Requested
+	CommandId            string               `json:"command_id"` // Command Id returned by client when timeout is reached
+	State                CommandStatus        `json:"state"`
+	Timeout              int                  `json:"timeout"` // Result should be returned before timeout, or client will have to poll using CommandId
+	Browse               *CommandBrowse       `json:"browse_command,omitempty"`
+	Delete               *CommandDeleteItem   `json:"delete_command,omitempty"`
+	CreateFolder         *CommandCreateFolder `json:"create_folder_command,omitempty"`
 	GenerateDownloadLink *CommandDownloadLink `json:"download_link_command"`
 }

@@ -2,17 +2,18 @@
 <head>
 	<script src="/js/main.js"></script>
 	<script src="/js/jquery-1.11.1.js"></script>
-	<link rel="stylesheet" href="css/metro-bootstrap.css">
-	<link rel="stylesheet" href="css/iconFont.min.css">
+	<script src="/js/wuala_theme.js"></script>
+	<link rel="stylesheet" type="text/css" href="/css/wuala_foundation.min.css"/>
+	<link rel="stylesheet" type="text/css" href="/css/wuala_style-all.min.css"/>
+	<link rel="stylesheet" type="text/css" href="/css/wuala_theme.css"/>
 	<link rel="stylesheet" type="text/css" href="/css/main.css"/>
-	<script src="js/metro.min.js"></script>
 
 </head>
-<body onload="browse('/')" class="metro">
+<body onload="init()" class="metro">
 <div id="actions">
-	<input type="button" value="Create Folder" onclick="createFolder()"></input>
+	<input type="button" value="Create Folder" onclick="createFolder()" class="button small"></input>
 </div>
-<nav id="navigation_bar" class="breadcrumbs mini"></nav>
+<div id="navigation_bar" class="large-11 columns"></div>
 <div id="browsing"/>
 </body>
 </html>

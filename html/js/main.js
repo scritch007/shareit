@@ -1,5 +1,12 @@
 var current_folder = null;
 
+var displayTheme = null;
+
+
+function init(){
+	displayTheme = new WualaDisplay();
+	browse("/");
+}
 function browse(path){
 	command = {
 		name: "browser.browse",
@@ -18,120 +25,47 @@ function browse(path){
 	);
 }
 
-function createNavElement(name){
-	var element = document.createElement("li");
-	var a = document.createElement("a")
-	if (null == name || undefined == name){
-		var i = document.createElement("i");
-		i.className = "icon-home";
-		i.style.fontSize = "21px";
-		a.appendChild(i);
-	}else{
-		a.innerHTML = name
-	}
-	element.appendChild(a);
-	return element;
-}
 function display(result){
 	var path = result.browse_command.path;
 	if ("/" != path.charAt(path.length - 1)){
 		path = path + "/";
 	}
-	var nav = document.getElementById("navigation_bar");
-	var splitted_path = path.split("/");
-	var nav_elements = splitted_path.slice(1, splitted_path.length -1);
-	nav.innerHTML = "";
-	var nav_ul = document.createElement("ul");
-	nav.appendChild(nav_ul);
-	var current_nav_element = createNavElement();
-	current_nav_element.onclick = function(path){
-		browse(path);
-	}.bind(current_nav_element, "/");
-	nav_ul.appendChild(current_nav_element);
-	for (var i=0; i<nav_elements.length; i++){
-		current_nav_element = createNavElement(nav_elements[i]);
-		current_nav_element.onclick = function(path){
-			browse(path);
-		}.bind(current_nav_element, "/" + nav_elements.slice(0, i+1).join("/"));
-		nav_ul.appendChild(current_nav_element);
-	}
-	if (null != current_nav_element){
-		current_nav_element.className += " active";
-	}
-	var browse_div = document.getElementById("browsing");
-	browse_div.className = "listview";
-	browsing.innerHTML = "";
+	displayTheme.GetBrowsingPathElement(path, browse);
+	var elementListObject = displayTheme.GetFilesListElement(path);
 
 	if ("/" != result.browse_command.path){
-		var a = document.createElement("a")
-		a.className = "list";
-		var img = document.createElement("img");
-		img.src = "img/Folder.svg";
-		img.className = "icon";
-		var parent = document.createElement("div");
-		parent.className = "files_item list-content bg-lightBlue";
-		parent.appendChild(img);
-		var parentLabel = document.createElement("span");
-
-		parentLabel.innerHTML = "..";
-		parentLabel.className = "list-title";
-		parent.onclick = function(){
-			var path = this;
-			if ("/" == path.charAt(path.length - 1)){
-				path = path.substr(0, path.length - 1);
-			}
-			var split = path.split("/");
-			path = split.slice(0, split.length - 1).join("/");
-			if (path == "")
-			{
-				path = "/";
-			}
-			browse(path);
-		}.bind(result.browse_command.path);
-		parent.appendChild(parentLabel);
-		a.appendChild(parent);
-		browse_div.appendChild(a);
+		displayTheme.AddElement(elementListObject, null, "..",
+			function(event){
+				var path = this;
+				if ("/" == path.charAt(path.length - 1)){
+					path = path.substr(0, path.length - 1);
+				}
+				var split = path.split("/");
+				path = split.slice(0, split.length - 1).join("/");
+				if (path == "")
+				{
+					path = "/";
+				}
+				browse(path);
+			}.bind(result.browse_command.path)
+		);
 	}
 	for(var i=0; i<result.browse_command.results.length; i++){
 		var element = result.browse_command.results[i];
 		element_path = path + element.name;
-		var a = document.createElement("a");
-		a.className = "list shadow";
-		var img = document.createElement("img");
-		img.className = "icon";
-		var li = document.createElement("div");
-		li.className = "files_item list-content bg-lightBlue";
-		li.appendChild(img);
-		var elementDiv = document.createElement("div");
-		elementDiv.className = "data";
-		var elementNameLabel = document.createElement("span");
-		elementNameLabel.className = "list-title";
-		elementNameLabel.innerHTML = element.name;
-		elementDiv.appendChild(elementNameLabel);
-		var buttonDiv = document.createElement("div");
-
-		var deleteButton = document.createElement("input");
-		deleteButton.type = "button";
-		deleteButton.value = "delete";
-		deleteButton.onclick = function(path, event){
+		var downloadCB = null;
+		var browseCB = null;
+		var deleteCB = function(path, event){
 			event.stopPropagation();
 			document.body.appendChild(deletePopup(path));
 		}.bind(element, element_path);
-		buttonDiv.appendChild(deleteButton);
-		elementDiv.appendChild(buttonDiv);
 
 		if (element.isDir){
-			li.onclick = function(path){
+			browseCB = function(path, event){
 				browse(path);
 			}.bind(element, element_path);
-			img.src = "img/Folder.svg";
 		}else{
-			img.src = "img/Files.svg";
-			var downloadButton = document.createElement("input");
-			downloadButton.type = "button";
-			downloadButton.value = "download";
-			downloadButton.className = "button primary";
-			downloadButton.onclick = function(path, event){
+			downloadCB = function(path, event){
 				event.stopPropagation()
 				command = {
 					name: "browser.download_link",
@@ -149,20 +83,22 @@ function display(result){
 					"json"
 				);
 			}.bind(element, element_path);
-			buttonDiv.appendChild(document.createTextNode('\u00A0'));
-			buttonDiv.appendChild(downloadButton);
 		}
-		li.appendChild(elementDiv);
-		a.appendChild(li);
-		browse_div.appendChild(a);
+		displayTheme.AddElement(elementListObject, element, element.name, browseCB, downloadCB, deleteCB);
 	}
 	//browse_div.appendChild(ul);
+	var mainDisplay = document.getElementById("browsing");
+	mainDisplay.innerHTML = "";
+	mainDisplay.appendChild(displayTheme.GetListDisplayComponent(elementListObject));
 }
 
 function createFolder(){
 	//Create a popup div to enter the name of the folder to create
 	var createFolderPopup = document.createElement("div");
-	createFolderPopup.className = "popup";
+	createFolderPopup.className = "window shadow";
+
+	var caption_div = Caption("Create New Folder");
+	createFolderPopup.appendChild(caption_div);
 	var folderNameLabel = document.createElement("label");
 	folderNameLabel.innerHTML = "Folder Name";
 	var folderNameInput = document.createElement("input");
@@ -173,16 +109,17 @@ function createFolder(){
 	createFolderPopup.appendChild(nameDiv);
 
 	var buttonDiv = document.createElement("div");
-	var cancelButton = document.createElement("input");
-	cancelButton.type = "button";
-	cancelButton.value = "Cancel";
+	buttonDiv.className = "footer";
+	var cancelButton = document.createElement("a");
+	cancelButton.type = "button small";
+	cancelButton.innerHTML = "Cancel";
+	cancelButton.className = "button small";
 	cancelButton.onclick = function(){
 		createFolderPopup.parentNode.removeChild(createFolderPopup);
 	}
 	buttonDiv.appendChild(cancelButton);
-	var goButton = document.createElement("input");
-	goButton.type = "button";
-	goButton.value = "Create";
+	var goButton = document.createElement("a");
+	goButton.innerHTML = "Create";
 	goButton.onclick = function(){
 		goButton.disabled = true;
 		cancelButton.disabled = true;
@@ -206,8 +143,8 @@ function createFolder(){
 			"json"
 		);
 	}
+	goButton.className = "button small";
 	buttonDiv.appendChild(goButton);
-	buttonDiv.className = "button_div";
 	createFolderPopup.appendChild(buttonDiv);
 	document.body.appendChild(createFolderPopup);
 	folderNameInput.focus();
@@ -217,23 +154,7 @@ function downloadPopup(path, download_link){
 	var window_div = document.createElement("div");
 	window_div.className = "window shadow";
 	window_div.id = "download_link_popup";
-	var caption_div = document.createElement("div");
-	caption_div.className = "caption";
-	//Caption definition
-	var caption_span = document.createElement("span");
-	caption_span.className = "icon icon-windows";
-	caption_div.appendChild(caption_span);
-	var caption_title = document.createElement("div");
-	caption_title.className = "title";
-	caption_title.innerHTML = "Download " + path;
-	caption_div.appendChild(caption_title);
-	var caption_close_button = document.createElement("button");
-	caption_close_button.type = "button";
-	caption_close_button.className = "btn-close";
-	caption_close_button.onclick = function(){
-		window_div.parentNode.removeChild(window_div);
-	}
-	caption_div.appendChild(caption_close_button);
+	var caption_div = Caption("Download " + path)
 	//End of Caption defintion
 	window_div.appendChild(caption_div);
 	var content_div = document.createElement("div");
@@ -261,10 +182,7 @@ function downloadPopup(path, download_link){
 	return window_div;
 }
 
-function deletePopup(path){
-	var window_div = document.createElement("div");
-	window_div.className = "window shadow";
-	window_div.id = "delete_item_popup";
+function Caption(text){
 	var caption_div = document.createElement("div");
 	caption_div.className = "caption";
 	//Caption definition
@@ -273,7 +191,7 @@ function deletePopup(path){
 	caption_div.appendChild(caption_span);
 	var caption_title = document.createElement("div");
 	caption_title.className = "title";
-	caption_title.innerHTML = "Delete " + path;
+	caption_title.innerHTML = text;
 	caption_div.appendChild(caption_title);
 	var caption_close_button = document.createElement("button");
 	caption_close_button.type = "button";
@@ -282,6 +200,14 @@ function deletePopup(path){
 	caption_close_button.onclick = function(){
 		window_div.parentNode.removeChild(window_div);
 	}
+	return caption_div;
+}
+
+function deletePopup(path){
+	var window_div = document.createElement("div");
+	window_div.className = "window shadow";
+	window_div.id = "delete_item_popup";
+	var caption_div = Caption("Delete " + path);
 	//End of Caption defintion
 	window_div.appendChild(caption_div);
 	var content_div = document.createElement("div");

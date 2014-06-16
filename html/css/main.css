@@ -8,15 +8,8 @@
 .spacer{
 	width:2px;
 }
-#download_link_popup{
-	position: absolute;
-	left:25%;
-	top:25%;
-	width:50%;
-	height:200px;
-}
 
-#delete_item_popup{
+.window{
 	position: absolute;
 	left:25%;
 	top:25%;
