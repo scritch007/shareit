@@ -42,7 +42,6 @@ func NewCommandHandler(config *Configuration) (c *CommandHandler) {
 func (c *CommandHandler) downloadLink(command *Command, resp chan<- bool) {
 	if nil == command.GenerateDownloadLink {
 		LOG_DEBUG.Println("Missing input configuration")
-		command.State.Status = ERROR
 		command.State.ErrorCode = 1
 		resp <- false
 		return
@@ -59,7 +58,6 @@ func (c *CommandHandler) downloadLink(command *Command, resp chan<- bool) {
 func (c *CommandHandler) deleteItemCommand(command *Command, resp chan<- bool) {
 	if nil == command.Delete {
 		LOG_DEBUG.Println("Missing input configuration")
-		command.State.Status = ERROR
 		command.State.ErrorCode = 1
 		resp <- false
 		return
@@ -68,7 +66,6 @@ func (c *CommandHandler) deleteItemCommand(command *Command, resp chan<- bool) {
 	LOG_DEBUG.Println("delete " + item_path)
 	fileInfo, err := os.Lstat(item_path)
 	if nil != err {
-		command.State.Status = ERROR
 		command.State.ErrorCode = 1 //TODO
 		resp <- false
 		return
@@ -79,8 +76,8 @@ func (c *CommandHandler) deleteItemCommand(command *Command, resp chan<- bool) {
 		fileList, err := ioutil.ReadDir(item_path)
 		if nil != err {
 			LOG_DEBUG.Println("Couldn't list directory")
-			resp <- false
 			command.State.ErrorCode = 1 //TODO
+			resp <- false
 			return
 		}
 		nbElements := len(fileList)
@@ -114,7 +111,6 @@ func (c *CommandHandler) deleteItemCommand(command *Command, resp chan<- bool) {
 func (c *CommandHandler) createFolderCommand(command *Command, resp chan<- bool) {
 	if nil == command.CreateFolder {
 		fmt.Println("Missing input configuration")
-		command.State.Status = ERROR
 		command.State.ErrorCode = 1
 		resp <- false
 		return
@@ -131,7 +127,6 @@ func (c *CommandHandler) createFolderCommand(command *Command, resp chan<- bool)
 func (c *CommandHandler) browseCommand(command *Command, resp chan<- bool) {
 	if nil == command.Browse {
 		fmt.Println("Missing input configuration")
-		command.State.Status = ERROR
 		command.State.ErrorCode = 1
 		resp <- false
 		return
@@ -175,7 +170,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	channel := make(chan bool)
 	command.State.Progress = 0
 	command.State.ErrorCode = 0
-	command.State.Status = IN_PROGRESS
+	command.State.Status = COMMAND_STATUS_IN_PROGRESS
 	//TODO start a timer or something like this so that we can timeout the request
 	if command.Name == EnumBrowserBrowse {
 		go c.browseCommand(command, channel)
@@ -199,9 +194,9 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Got answer from command")
 		timer.Stop()
 		if a {
-			command.State.Status = DONE
+			command.State.Status = COMMAND_STATUS_DONE
 		} else {
-			command.State.Status = ERROR
+			command.State.Status = COMMAND_STATUS_ERROR
 		}
 		command.State.Progress = 100
 	case <-timer.C:
@@ -240,55 +235,3 @@ const (
 	EnumBrowserDownloadLink EnumAction = "browser.download_link"
 	EnumDebugLongRequest    EnumAction = "debug.long_request"
 )
-
-const (
-	DONE        = 0
-	QUEUED      = 1
-	IN_PROGRESS = 2
-	ERROR       = 3
-	CANCELLED   = 4
-)
-
-type CommandStatus struct {
-	Status    int `json:"status"`
-	Progress  int `json:"progress,omitempty"`
-	ErrorCode int `json:"error_code,omitempty"`
-}
-
-type StorageItem struct {
-	Name             string `json:"name"`
-	IsDir            bool   `json:"isDir"`
-	ModificationDate int64  `json:"mDate"`
-	ChangeDate       int    `json:"cDate"`
-	Size             int64  `json:"size"`
-}
-
-type CommandBrowse struct {
-	Path    string        `json:"path"`
-	Results []StorageItem `json:"results"`
-}
-
-type CommandCreateFolder struct {
-	Path   string      `json:"path"`
-	Result StorageItem `json:"result"`
-}
-
-type CommandDeleteItem struct {
-	Path string `json:"path"`
-}
-
-type CommandDownloadLink struct {
-	Path   string `json:"path"`
-	Result string `json:"download_link"`
-}
-
-type Command struct {
-	Name                 EnumAction           `json:"name"`       // Name of action Requested
-	CommandId            string               `json:"command_id"` // Command Id returned by client when timeout is reached
-	State                CommandStatus        `json:"state"`
-	Timeout              int                  `json:"timeout"` // Result should be returned before timeout, or client will have to poll using CommandId
-	Browse               *CommandBrowse       `json:"browse_command,omitempty"`
-	Delete               *CommandDeleteItem   `json:"delete_command,omitempty"`
-	CreateFolder         *CommandCreateFolder `json:"create_folder_command,omitempty"`
-	GenerateDownloadLink *CommandDownloadLink `json:"download_link_command"`
-}

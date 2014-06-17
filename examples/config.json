@@ -3,5 +3,17 @@
 	"private_key": "SomeSecretKeyThatOneShouldDefine",
 	"static_path": "./html",
 	"web_port": "8080",
-	"auth_config": "examples/auth.config"
+	"auth":[
+		{
+			"type": "DummyAuth",
+			"config": {
+				"autovalidate": true
+			}
+		}
+	],
+	"database":{
+		"type": "DummyDb",
+		"config": {
+		}
+	}
 }

@@ -4,19 +4,36 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/gorilla/mux"
+	"github.com/scritch007/shareit/auth"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 )
 
-type readConfiguration struct {
-	RootPrefix string  `json:"root_prefix"`
-	PrivateKey string  `json:"private_key"`
-	StaticPath string  `json:"static_path"`
-	WebPort    string  `json:"web_port"`
+type configSubStruct struct {
+	Type   string          `json:"type"`
+	Config json.RawMessage `json:"config"`
 }
 
-func NewConfiguration() (resultConfig *Configuration) {
+type readConfiguration struct {
+	RootPrefix string            `json:"root_prefix"`
+	PrivateKey string            `json:"private_key"`
+	StaticPath string            `json:"static_path"`
+	WebPort    string            `json:"web_port"`
+	AuthConfig []configSubStruct `json:"auth"`
+	DbConfig   configSubStruct   `json:"database"`
+}
+
+func (c *Configuration) GetAvailableAuthentications() []string {
+	res := make([]string, len(c.auths))
+	for i, elem := range c.auths {
+		res[i] = elem.Name()
+	}
+	return res
+}
+
+func NewConfiguration(r *mux.Router) (resultConfig *Configuration) {
 	var help = false
 	var configFile = ""
 	flag.StringVar(&configFile, "config", "", "Configuration file to use")
@@ -56,7 +73,7 @@ func NewConfiguration() (resultConfig *Configuration) {
 		os.Exit(2)
 	}
 	staticPath, err := filepath.Abs(c.StaticPath)
-	if err != nil{
+	if err != nil {
 		fmt.Println("Couldn't get Absolute path for %s", c.StaticPath)
 		os.Exit(2)
 	}
@@ -70,7 +87,7 @@ func NewConfiguration() (resultConfig *Configuration) {
 		os.Exit(2)
 	}
 	rootPrefix, err := filepath.Abs(c.RootPrefix)
-	if err != nil{
+	if err != nil {
 		fmt.Println("Couldn't get Absolute path for %s", c.StaticPath)
 		os.Exit(2)
 	}
@@ -87,6 +104,16 @@ func NewConfiguration() (resultConfig *Configuration) {
 	resultConfig.PrivateKey = c.PrivateKey
 	resultConfig.StaticPath = staticPath
 	resultConfig.WebPort = c.WebPort
+	//Now Start the Auth and DB configurations...
+	resultConfig.auths = make([]auth.Authentication, len(c.AuthConfig))
+	for i, elem := range c.AuthConfig {
+		authEntry, err := auth.NewAuthentication(elem.Type, elem.Config, r)
+		if nil != err {
+			fmt.Println("Error: Error reading authentication configuration %s", err)
+			os.Exit(2)
+		}
+		resultConfig.auths[i] = authEntry
+	}
 
 	return resultConfig
 }

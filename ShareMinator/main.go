@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/scritch007/shareit"
+	"io"
 	"net/http"
 	"os"
 	"path"
@@ -36,27 +38,30 @@ func (m *Main) homeHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path.Join(m.path, "index.html"))
 }
 
+func (m *Main) authsHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Requested the available auths")
+	b, _ := json.Marshal(m.config.GetAvailableAuthentications())
+	io.WriteString(w, string(b))
+}
+
 func main() {
 	shareit.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
-	config := shareit.NewConfiguration()
+	r := mux.NewRouter()
+	config := shareit.NewConfiguration(r)
 
 	m := NewMain(config)
 
 	c := shareit.NewCommandHandler(config)
 
-	a := shareit.NewAuthentication(config)
-
-	r := mux.NewRouter()
 	r.HandleFunc("/", m.homeHandler)
 	r.HandleFunc("/commands", c.Commands).Methods("GET", "POST")
 	r.HandleFunc("/commands/{command_id}", c.Command).Methods("GET", "PUT", "DELETE")
 	r.HandleFunc("/downloads/{file:.*}", c.Download).Methods("GET")
+	r.HandleFunc("/auths", m.authsHandler).Methods("GET")
 	r.HandleFunc("/js/{file:.*}", m.serveJSFile)
 	r.HandleFunc("/css/{file:.*}", m.serveCSSFile)
 	r.HandleFunc("/img/{file:.*}", m.serveIMGFile)
 	r.HandleFunc("/fonts/{file:.*}", m.serveFontsFile)
-
-	r.HandleFunc("/auth/{method:.*}", a.Handle)
 
 	http.Handle("/", r)
 
