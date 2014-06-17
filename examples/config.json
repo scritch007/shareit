@@ -2,5 +2,6 @@
 	"root_prefix": "/home/benjamin/tmp",
 	"private_key": "SomeSecretKeyThatOneShouldDefine",
 	"static_path": "./html",
-	"web_port": "8080"
+	"web_port": "8080",
+	"auth_config": "examples/auth.config"
 }

@@ -1,4 +1,4 @@
-package main
+package shareit
 
 import (
 	"encoding/json"
@@ -15,14 +15,6 @@ import (
 )
 
 //ServeContent(w ResponseWriter, req *Request, name string, modtime time.Time, content io.ReadSeeker)
-
-//CommandHandler is used to keep information about issued commands
-type CommandHandler struct {
-	config        *Configuration
-	commandsList  []*Command
-	commandIndex  int
-	downloadLinks map[string]string
-}
 
 func (c *CommandHandler) save(command *Command) {
 	c.commandsList[c.commandIndex] = command

@@ -1,4 +1,4 @@
-package main
+package shareit
 
 import (
 	"encoding/json"
@@ -14,19 +14,6 @@ type readConfiguration struct {
 	PrivateKey string  `json:"private_key"`
 	StaticPath string  `json:"static_path"`
 	WebPort    string  `json:"web_port"`
-	DbPath     *string `json:"db_path,omitempty"`
-	DbUser     *string `json:"db_user,omitempty"`
-	DbPassword *string `json:"db_password,omitempty"`
-}
-
-type Configuration struct {
-	RootPrefix string
-	PrivateKey string
-	StaticPath string
-	WebPort    string
-	DbPath     *string
-	DbUser     *string
-	DbPassword *string
 }
 
 func NewConfiguration() (resultConfig *Configuration) {
@@ -100,9 +87,6 @@ func NewConfiguration() (resultConfig *Configuration) {
 	resultConfig.PrivateKey = c.PrivateKey
 	resultConfig.StaticPath = staticPath
 	resultConfig.WebPort = c.WebPort
-	resultConfig.DbPath = c.DbPath
-	resultConfig.DbUser = c.DbUser
-	resultConfig.DbPassword = c.DbPassword
 
 	return resultConfig
 }

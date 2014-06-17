@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/scritch007/shareit"
 	"net/http"
 	"os"
 	"path"
@@ -26,7 +27,7 @@ func (m *Main) serveFontsFile(w http.ResponseWriter, r *http.Request) {
 func (m *Main) serveFile(w http.ResponseWriter, r *http.Request, folder string) {
 	vars := mux.Vars(r)
 	file := vars["file"]
-	LOG_DEBUG.Println("Serving file %s", file)
+	shareit.LOG_DEBUG.Println("Serving file %s", file)
 	http.ServeFile(w, r, path.Join(m.path, folder, file))
 }
 
@@ -36,12 +37,14 @@ func (m *Main) homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
-	config := NewConfiguration()
+	shareit.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
+	config := shareit.NewConfiguration()
 
 	m := NewMain(config)
 
-	c := NewCommandHandler(config)
+	c := shareit.NewCommandHandler(config)
+
+	a := shareit.NewAuthentication(config)
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", m.homeHandler)
@@ -52,6 +55,9 @@ func main() {
 	r.HandleFunc("/css/{file:.*}", m.serveCSSFile)
 	r.HandleFunc("/img/{file:.*}", m.serveIMGFile)
 	r.HandleFunc("/fonts/{file:.*}", m.serveFontsFile)
+
+	r.HandleFunc("/auth/{method:.*}", a.Handle)
+
 	http.Handle("/", r)
 
 	fmt.Println("Starting server on port " + m.port)
@@ -61,10 +67,10 @@ func main() {
 type Main struct {
 	path   string
 	port   string
-	config *Configuration
+	config *shareit.Configuration
 }
 
-func NewMain(configuration *Configuration) (m *Main) {
+func NewMain(configuration *shareit.Configuration) (m *Main) {
 	m = new(Main)
 	m.path = configuration.StaticPath
 	m.port = configuration.WebPort
