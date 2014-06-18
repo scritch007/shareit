@@ -1,16 +1,23 @@
 //shareit package aims at browsing files and sharing them with others
-package shareit
+package types
 
 import (
-	"github.com/scritch007/shareit/auth"
+	"github.com/gorilla/mux"
 )
 
-//CommandHandler is used to keep information about issued commands
-type CommandHandler struct {
-	config        *Configuration
-	commandsList  []*Command
-	commandIndex  int
-	downloadLinks map[string]string
+type DatabaseInterface interface {
+	Name() string
+	AddCommand(command *Command) (ref string, err error)
+	ListCommands(offset int, limit int, search_parameters *CommandsSearchParameters) ([]Command, int, error) //set limit to -1 for retrieving all the elements, search_parameters will be used to filter response
+	GetCommand(ref string)(command *Command, err error)
+	DeleteCommand(ref *string, err error)
+	AddDownloadLink(key string, link *DownloadLink)(err error)
+	GetDownloadLink(path string)(link *DownloadLink, err error)
+}
+
+type Authentication interface {
+	Name() string
+	AddRoutes(r *mux.Router) error
 }
 
 //Configuration Structure
@@ -19,16 +26,21 @@ type Configuration struct {
 	PrivateKey string
 	StaticPath string
 	WebPort    string
-	auths      []auth.Authentication
+	Db         DatabaseInterface
+	Auths      []Authentication
 }
 
-type DatabaseInterface interface {
-	Name() string
-	AddCommand(command *Command) (ref string, err error)
-	ListCommands(offset int, limit int, search_parameters *CommandsSearchParameters) ([]Command, int, error) //set limit to -1 for retrieving all the elements, search_parameters will be used to filter response
-	GetCommand(ref *string)
-	DeleteCommand(ref *string)
-	AddDownloadLink()
+func (c *Configuration) GetAvailableAuthentications() []string {
+	res := make([]string, len(c.Auths))
+	for i, elem := range c.Auths {
+		res[i] = elem.Name()
+	}
+	return res
+}
+
+type DownloadLink struct{
+	Link string `json:"link"`
+	Path string `json:"path"`
 }
 
 //Current Status of the command
@@ -79,7 +91,7 @@ type CommandDeleteItem struct {
 
 type CommandDownloadLink struct {
 	Path   string `json:"path"`
-	Result string `json:"download_link"`
+	Result DownloadLink `json:"download_link"`
 }
 
 type Command struct {
@@ -92,3 +104,13 @@ type Command struct {
 	CreateFolder         *CommandCreateFolder `json:"create_folder_command,omitempty"`
 	GenerateDownloadLink *CommandDownloadLink `json:"download_link_command"`
 }
+
+type EnumAction string
+
+const (
+	EnumBrowserBrowse       EnumAction = "browser.browse"
+	EnumBrowserCreateFolder EnumAction = "browser.create_folder"
+	EnumBrowserDeleteItem   EnumAction = "browser.delete_item"
+	EnumBrowserDownloadLink EnumAction = "browser.download_link"
+	EnumDebugLongRequest    EnumAction = "debug.long_request"
+)
