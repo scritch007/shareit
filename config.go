@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/scritch007/shareit/auth"
+	"github.com/scritch007/shareit/types"
+	"github.com/scritch007/shareit/database"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -25,15 +27,7 @@ type readConfiguration struct {
 	DbConfig   configSubStruct   `json:"database"`
 }
 
-func (c *Configuration) GetAvailableAuthentications() []string {
-	res := make([]string, len(c.auths))
-	for i, elem := range c.auths {
-		res[i] = elem.Name()
-	}
-	return res
-}
-
-func NewConfiguration(r *mux.Router) (resultConfig *Configuration) {
+func NewConfiguration(r *mux.Router) (resultConfig *types.Configuration) {
 	var help = false
 	var configFile = ""
 	flag.StringVar(&configFile, "config", "", "Configuration file to use")
@@ -99,20 +93,26 @@ func NewConfiguration(r *mux.Router) (resultConfig *Configuration) {
 		}
 		os.Exit(2)
 	}
-	resultConfig = new(Configuration)
+	resultConfig = new(types.Configuration)
 	resultConfig.RootPrefix = rootPrefix
 	resultConfig.PrivateKey = c.PrivateKey
 	resultConfig.StaticPath = staticPath
 	resultConfig.WebPort = c.WebPort
 	//Now Start the Auth and DB configurations...
-	resultConfig.auths = make([]auth.Authentication, len(c.AuthConfig))
+	resultConfig.Auths = make([]types.Authentication, len(c.AuthConfig))
 	for i, elem := range c.AuthConfig {
-		authEntry, err := auth.NewAuthentication(elem.Type, elem.Config, r)
+		authEntry, err := auth.NewAuthentication(elem.Type, &elem.Config, r)
 		if nil != err {
 			fmt.Println("Error: Error reading authentication configuration %s", err)
 			os.Exit(2)
 		}
-		resultConfig.auths[i] = authEntry
+		resultConfig.Auths[i] = authEntry
+	}
+
+	resultConfig.Db, err = database.NewDatabase(c.DbConfig.Type, &c.DbConfig.Config)
+	if nil != err{
+		fmt.Println("Error: Error reading database configuration: ", err)
+		os.Exit(2)
 	}
 
 	return resultConfig

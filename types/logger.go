@@ -1,4 +1,4 @@
-package shareit
+package types
 
 import (
 	"io"

@@ -14,9 +14,9 @@ type DummyAuth struct {
 	GmailPassword string `json:"gmail_password"`
 }
 
-func NewDummyAuth(config json.RawMessage) (d *DummyAuth, err error){
+func NewDummyAuth(config *json.RawMessage) (d *DummyAuth, err error){
 	d = new(DummyAuth)
-	if err = json.Unmarshal(config, d); nil != err{
+	if err = json.Unmarshal(*config, d); nil != err{
 		return nil, err
 	}
 	return d, nil

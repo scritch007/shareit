@@ -3,18 +3,13 @@ package auth
 import (
 	"github.com/gorilla/mux"
 	"github.com/scritch007/shareit/auth/dummy"
+	"github.com/scritch007/shareit/types"
 	"encoding/json"
 	"errors"
 )
 
-type Authentication interface {
-	Name() string
-	AddRoutes(r *mux.Router) error
-}
-
-
 //Should be called by authentication mechanism
-func NewAuthentication(auth string, config json.RawMessage, r *mux.Router) (newAuth Authentication, err error){
+func NewAuthentication(auth string, config *json.RawMessage, r *mux.Router) (newAuth types.Authentication, err error){
 	switch auth{
 	case dummy.Name:
 		newAuth, err = dummy.NewDummyAuth(config)

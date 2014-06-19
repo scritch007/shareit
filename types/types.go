@@ -3,15 +3,17 @@ package types
 
 import (
 	"github.com/gorilla/mux"
+	"encoding/json"
+//	"fmt"
 )
 
 type DatabaseInterface interface {
 	Name() string
 	AddCommand(command *Command) (ref string, err error)
-	ListCommands(offset int, limit int, search_parameters *CommandsSearchParameters) ([]Command, int, error) //set limit to -1 for retrieving all the elements, search_parameters will be used to filter response
+	ListCommands(offset int, limit int, search_parameters *CommandsSearchParameters) ([]*Command, int, error) //set limit to -1 for retrieving all the elements, search_parameters will be used to filter response
 	GetCommand(ref string)(command *Command, err error)
-	DeleteCommand(ref *string, err error)
-	AddDownloadLink(key string, link *DownloadLink)(err error)
+	DeleteCommand(ref *string) (err error)
+	AddDownloadLink(link *DownloadLink)(err error)
 	GetDownloadLink(path string)(link *DownloadLink, err error)
 }
 
@@ -41,6 +43,14 @@ func (c *Configuration) GetAvailableAuthentications() []string {
 type DownloadLink struct{
 	Link string `json:"link"`
 	Path string `json:"path"`
+}
+
+func (d *DownloadLink)String() string{
+	b, err := json.Marshal(d)
+	if nil != err{
+		return "Couldn't serialize"
+	}
+	return string(b)
 }
 
 //Current Status of the command
@@ -102,7 +112,15 @@ type Command struct {
 	Browse               *CommandBrowse       `json:"browse_command,omitempty"`
 	Delete               *CommandDeleteItem   `json:"delete_command,omitempty"`
 	CreateFolder         *CommandCreateFolder `json:"create_folder_command,omitempty"`
-	GenerateDownloadLink *CommandDownloadLink `json:"download_link_command"`
+	GenerateDownloadLink *CommandDownloadLink `json:"download_link_command,omitempty"`
+}
+
+func (c *Command)String() string{
+	b, err := json.Marshal(c)
+	if nil != err{
+		return "Couldn't serialize"
+	}
+	return string(b)
 }
 
 type EnumAction string

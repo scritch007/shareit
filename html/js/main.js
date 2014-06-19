@@ -5,6 +5,9 @@ var displayTheme = null;
 
 function init(){
 	displayTheme = new WualaDisplay();
+	$.getJSON("/auths", function(result){
+		HandleAuthsResult(result);
+	});
 	browse("/");
 }
 function browse(path){
@@ -78,7 +81,7 @@ function display(result){
 					JSON.stringify(command),
 					function(result){
 						console.log(result.download_link_command.download_link);
-						document.body.appendChild(downloadPopup(path, result.download_link_command.download_link));
+						document.body.appendChild(downloadPopup(path, result.download_link_command.download_link.link));
 					},
 					"json"
 				);
@@ -198,7 +201,7 @@ function Caption(text){
 	caption_close_button.className = "btn-close";
 	caption_div.appendChild(caption_close_button);
 	caption_close_button.onclick = function(){
-		window_div.parentNode.removeChild(window_div);
+		caption_div.parentNode.parentNode.removeChild(caption_div.parentNode);
 	}
 	return caption_div;
 }

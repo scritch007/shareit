@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/scritch007/shareit"
+	"github.com/scritch007/shareit/types"
 	"io"
 	"net/http"
 	"os"
@@ -29,7 +30,7 @@ func (m *Main) serveFontsFile(w http.ResponseWriter, r *http.Request) {
 func (m *Main) serveFile(w http.ResponseWriter, r *http.Request, folder string) {
 	vars := mux.Vars(r)
 	file := vars["file"]
-	shareit.LOG_DEBUG.Println("Serving file %s", file)
+	types.LOG_DEBUG.Println("Serving file %s", file)
 	http.ServeFile(w, r, path.Join(m.path, folder, file))
 }
 
@@ -45,7 +46,7 @@ func (m *Main) authsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	shareit.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
+	types.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
 	r := mux.NewRouter()
 	config := shareit.NewConfiguration(r)
 
@@ -72,10 +73,10 @@ func main() {
 type Main struct {
 	path   string
 	port   string
-	config *shareit.Configuration
+	config *types.Configuration
 }
 
-func NewMain(configuration *shareit.Configuration) (m *Main) {
+func NewMain(configuration *types.Configuration) (m *Main) {
 	m = new(Main)
 	m.path = configuration.StaticPath
 	m.port = configuration.WebPort
