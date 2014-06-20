@@ -13,15 +13,15 @@
 	display: inline-block;
 }
 
+.window > *{
+	padding-bottom: 3px;
+	padding-left: 3px;
+}
 .window > .content {
 	position:relative;
-	top:2px;
-	height:50%;
 }
 .window > .footer{
 	position: relative;
-	top: 2px;
-	height: 20%;
 }
 
 .window > .footer > .button{

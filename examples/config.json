@@ -16,5 +16,7 @@
 		"config": {
 			"db_folder": "/tmp/"
 		}
-	}
+	},
+	"default_database": "DummyDb"
+
 }

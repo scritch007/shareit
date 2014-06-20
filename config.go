@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/scritch007/shareit/auth"
-	"github.com/scritch007/shareit/types"
 	"github.com/scritch007/shareit/database"
+	"github.com/scritch007/shareit/types"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -110,7 +110,7 @@ func NewConfiguration(r *mux.Router) (resultConfig *types.Configuration) {
 	}
 
 	resultConfig.Db, err = database.NewDatabase(c.DbConfig.Type, &c.DbConfig.Config)
-	if nil != err{
+	if nil != err {
 		fmt.Println("Error: Error reading database configuration: ", err)
 		os.Exit(2)
 	}

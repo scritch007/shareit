@@ -107,15 +107,65 @@ WualaDisplay.prototype.GetFilesListElement = function(path){
 	return browse_div;
 }
 
+WualaDisplay.prototype.buildButtonDiv = function(element, displayName, 	onBrowseCB, onDownloadCB, onDeleteCB){
+	var buttonDiv = document.createElement("div");
+	buttonDiv.className = "actions";
+	if (null != onDeleteCB && undefined != onDeleteCB)
+	{
+		var deleteButton = document.createElement("a");
+		deleteButton.className = "button small";
+		var i =document.createElement("i");
+		i.className = "icon-remove";
+		deleteButton.appendChild(i);
+		deleteButton.onclick = function(path, event){
+			onDeleteCB(event);
+		}.bind(a, name);
+		buttonDiv.appendChild(deleteButton);
+	}
+
+
+	if (null != onDownloadCB && undefined != onDownloadCB){
+		var downloadButton = document.createElement("a");
+		downloadButton.className = "button small w-download";
+		var i = document.createElement("i");
+		i.className = "icon-arrow-down";
+		downloadButton.appendChild(i);
+		downloadButton.onclick = function(path, event){
+			onDownloadCB(event);
+		}.bind(a, name);
+		buttonDiv.appendChild(document.createTextNode('\u00A0'));
+		buttonDiv.appendChild(downloadButton);
+	}
+	return buttonDiv;
+}
+
 WualaDisplay.prototype.AddElement = function(list, element, displayName, onBrowseCB, onDownloadCB, onDeleteCB){
 	var name = displayName;
 	var tr = document.createElement("tr");
 	tr.className = "w-open-path pointer ";
 	//TODO TO REMOVE AFTER REWRITING IT
 	a = tr;
+
 	//Mobile
 	var td = document.createElement("td");
 	td.className = "mob";
+
+	var buttonPlus = document.createElement("button");
+	buttonPlus.className = "button small w-expand-info";
+	var iButtonPlus = document.createElement("i");
+	iButtonPlus.className = "icon-plus";
+	buttonPlus.appendChild(iButtonPlus);
+	buttonPlus.onclick = function(event){
+		if (mobtr.style.display == "none"){
+			mobtr.style.display = "table-row";
+			iButtonPlus.className = "icon-minus";
+		}else{
+			mobtr.style.display = "none";
+			iButtonPlus.className = "icon-plus";
+		}
+		event.stopPropagation();
+	}
+	td.appendChild(buttonPlus)
 	tr.appendChild(td);
 
 	td=document.createElement("td");
@@ -123,6 +173,14 @@ WualaDisplay.prototype.AddElement = function(list, element, displayName, onBrows
 	img.className = "wred icon-large icon-file-alt";
 	td.appendChild(img);
 	tr.appendChild(td);
+
+	if (onBrowseCB){
+		img.className = "wred icon-large icon-folder-close";
+		tr.onclick = function(path, event){
+			onBrowseCB(event);
+		}.bind(a, name);
+
+	}
 
 	td = document.createElement("td");
 	td.innerHTML = name;
@@ -154,42 +212,52 @@ WualaDisplay.prototype.AddElement = function(list, element, displayName, onBrows
 	td.className = "hide-for-small";
 	tr.appendChild(td);
 
-	var buttonDiv = document.createElement("div");
-	buttonDiv.className = "actions";
-	if (null != onDeleteCB && undefined != onDeleteCB)
-	{
-		var deleteButton = document.createElement("a");
-		deleteButton.className = "button small";
-		var i =document.createElement("i");
-		i.className = "icon-remove";
-		deleteButton.appendChild(i);
-		deleteButton.onclick = function(path, event){
-			onDeleteCB(event);
-		}.bind(a, name);
-		buttonDiv.appendChild(deleteButton);
-	}
+	var buttonDiv = this.buildButtonDiv(element, displayName, onBrowseCB, onDownloadCB, onDeleteCB);
 	td.appendChild(buttonDiv);
-
-	if (onBrowseCB){
-		img.className = "wred icon-large icon-folder-close";
-		tr.onclick = function(path, event){
-			onBrowseCB(event);
-		}.bind(a, name);
-
-	}
-	if (null != onDownloadCB && undefined != onDownloadCB){
-		var downloadButton = document.createElement("a");
-		downloadButton.className = "button small w-download";
-		var i = document.createElement("i");
-		i.className = "icon-arrow-down";
-		downloadButton.appendChild(i);
-		downloadButton.onclick = function(path, event){
-			onDownloadCB(event);
-		}.bind(a, name);
-		buttonDiv.appendChild(document.createTextNode('\u00A0'));
-		buttonDiv.appendChild(downloadButton);
-	}
 	this.tbody.appendChild(a);
+	//TODO make another one for the phones :)
+	var mobtr = document.createElement("tr");
+	mobtr.className = "hide";
+	mobtr.style.display = "none";
+	td = document.createElement("td");
+	td.colSpan = "8";
+	mobtr.appendChild(td);
+
+	if (null != onDownloadCB && undefined != onDownloadCB){
+		var div = document.createElement("div");
+		var strong = document.createElement("strong");
+		strong.innerHTML = "Size";
+		div.appendChild(strong);
+		div.innerHTML += ": " + element.size;
+		td.appendChild(div);
+		div = document.createElement("div");
+		strong = document.createElement("strong");
+		strong.innerHTML = "Change";
+		div.appendChild(strong);
+		div.innerHTML += ": " + element.mDate;
+		td.appendChild(div);
+		div = document.createElement("div");
+		strong = document.createElement("strong");
+		strong.innerHTML = "Kind";
+		div.appendChild(strong);
+		div.innerHTML += ": -";
+		td.appendChild(div);
+	}
+	var actiondiv = this.buildButtonDiv(element, displayName, onBrowseCB, onDownloadCB, onDeleteCB);
+	td.appendChild(actiondiv)
+	mobtr.appendChild(td);
+	//<tr class="hide" data-wuala-path="/CMX10-Android/Android/CM10/Kernel/X10_4.1.X_CMX10_bootmanager_v13.ftf/" style="display: table-row;">
+    // <td colspan="8">
+    //  <div><strong>Size</strong> : 6.3 MB</div>
+    //  <div><strong>Change</strong> : 1 years ago</div>
+    //  <div><strong>Kind</strong> :  <i class="muted">ftf</i></div>
+    //  <div class="actions">
+    //    <a href="https://content.wuala.com/contents/CMX10-Android/Android/CM10/Kernel/X10_4.1.X_CMX10_bootmanager_v13.ftf/?dl=1" class="button small w-download"><i class="icon-arrow-down"></i></a>
+    //    <a class="button small w-open-sharing" data-reveal-idd="sharing"><i class="icon-share-alt"></i></a>
+    //  </div>
+    // </td>
+    //</tr>
+    this.tbody.appendChild(mobtr);
 }
 
 WualaDisplay.prototype.GetListDisplayComponent = function(list){

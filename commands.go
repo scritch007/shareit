@@ -10,20 +10,20 @@ import (
 	"net/url"
 	"os"
 	"path"
-//	"strconv"
-	"time"
+	//	"strconv"
 	"github.com/scritch007/shareit/types"
+	"time"
 )
 
 //ServeContent(w ResponseWriter, req *Request, name string, modtime time.Time, content io.ReadSeeker)
 //CommandHandler is used to keep information about issued commands
 type CommandHandler struct {
-	config        *types.Configuration
+	config *types.Configuration
 }
 
-func (c *CommandHandler) save(command *types.Command) error{
+func (c *CommandHandler) save(command *types.Command) error {
 	ref, err := c.config.Db.AddCommand(command)
-	if (nil != err){
+	if nil != err {
 		return err
 	}
 	command.CommandId = ref
@@ -46,7 +46,7 @@ func (c *CommandHandler) downloadLink(command *types.Command, resp chan<- bool) 
 	}
 	file_path := path.Join(c.config.RootPrefix, command.GenerateDownloadLink.Path)
 	result := ComputeHmac256(file_path, c.config.PrivateKey)
-	dLink := types.DownloadLink{Link:result, Path:command.GenerateDownloadLink.Path}
+	dLink := types.DownloadLink{Link: result, Path: command.GenerateDownloadLink.Path}
 	c.config.Db.AddDownloadLink(&dLink)
 	command.GenerateDownloadLink.Result.Link = url.QueryEscape(result)
 	command.GenerateDownloadLink.Result.Path = command.GenerateDownloadLink.Path
@@ -84,7 +84,7 @@ func (c *CommandHandler) deleteItemCommand(command *types.Command, resp chan<- b
 		for i, element := range fileList {
 			element_path := path.Join(item_path, element.Name())
 			types.LOG_DEBUG.Println("Trying to remove " + element_path)
-			errà = os.RemoveAll(element_path)
+			err = os.RemoveAll(element_path)
 			if nil != err {
 				success = false
 				command.State.ErrorCode = 1 //TODO
@@ -154,8 +154,10 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	if "GET" == r.Method {
 		// We want to list the commands that have been already answered
 		commands, _, err := c.config.Db.ListCommands(0, -1, nil)
-		if nil != err{
-			//TODO
+		if nil != err {
+			errMessage := fmt.Sprintf("Invalid Input: %s", err)
+			types.LOG_ERROR.Println(errMessage)
+			http.Error(w, errMessage, http.StatusInternalServerError)
 			return
 		}
 		b, _ := json.Marshal(commands)
@@ -166,15 +168,17 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	command := new(types.Command)
 	input, err := ioutil.ReadAll(r.Body)
 	if nil != err {
-		fmt.Println("1 Failed with error code " + err.Error())
+		errMessage := fmt.Sprintf("1 Failed with error code: %s", err)
+		types.LOG_ERROR.Println(errMessage)
+		http.Error(w, errMessage, http.StatusBadRequest)
 		return
 	}
 	err = json.Unmarshal(input, command)
-	if nil != err{
+	if nil != err {
 		//TODO Set erro Code
 	}
 	err = c.save(command)
-	if (nil != err){
+	if nil != err {
 		//TODO Set error code Properly
 		return
 	}
@@ -221,8 +225,7 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ref := vars["command_id"]
 	command, err := c.config.Db.GetCommand(ref)
-	if nil != err{
-		//TODO
+	if nil != err {
 		return
 	}
 	b, _ := json.Marshal(command)
@@ -237,6 +240,6 @@ func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
 	if nil == err {
 		http.ServeFile(w, r, path.Join(c.config.RootPrefix, link.Path))
 	} else {
-		io.WriteString(w, "Download link is unavailable. Try renewing link")
+		http.Error(w, "Download link is unavailable. Try renewing link", http.StatusNotFound)
 	}
 }

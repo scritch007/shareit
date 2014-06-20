@@ -2,9 +2,16 @@ var current_folder = null;
 
 var displayTheme = null;
 
+var mainWindow = null;
+
+function setPopup(popup){
+	mainWindow.innerHTML = "";
+	mainWindow.appendChild(popup);
+}
 
 function init(){
 	displayTheme = new WualaDisplay();
+	mainWindow = document.getElementById("window_popup_id");
 	$.getJSON("/auths", function(result){
 		HandleAuthsResult(result);
 	});
@@ -60,7 +67,7 @@ function display(result){
 		var browseCB = null;
 		var deleteCB = function(path, event){
 			event.stopPropagation();
-			document.body.appendChild(deletePopup(path));
+			setPopup(deletePopup(path));
 		}.bind(element, element_path);
 
 		if (element.isDir){
@@ -81,7 +88,7 @@ function display(result){
 					JSON.stringify(command),
 					function(result){
 						console.log(result.download_link_command.download_link);
-						document.body.appendChild(downloadPopup(path, result.download_link_command.download_link.link));
+						setPopup(downloadPopup(path, result.download_link_command.download_link.link));
 					},
 					"json"
 				);
@@ -149,7 +156,7 @@ function createFolder(){
 	goButton.className = "button small";
 	buttonDiv.appendChild(goButton);
 	createFolderPopup.appendChild(buttonDiv);
-	document.body.appendChild(createFolderPopup);
+	setPopup(createFolderPopup);
 	folderNameInput.focus();
 }
 
@@ -196,9 +203,11 @@ function Caption(text){
 	caption_title.className = "title";
 	caption_title.innerHTML = text;
 	caption_div.appendChild(caption_title);
-	var caption_close_button = document.createElement("button");
-	caption_close_button.type = "button";
-	caption_close_button.className = "btn-close";
+	var caption_close_button = document.createElement("a");
+	caption_close_button.className = "button small";
+	var i =document.createElement("i");
+	i.className = "icon-remove";
+	caption_close_button.appendChild(i);
 	caption_div.appendChild(caption_close_button);
 	caption_close_button.onclick = function(){
 		caption_div.parentNode.parentNode.removeChild(caption_div.parentNode);

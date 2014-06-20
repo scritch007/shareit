@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"errors"
 	"github.com/scritch007/shareit/types"
+	"path"
 	//"github.com/scritch007/shareit/database"
 )
 
@@ -15,10 +16,12 @@ const(
 )
 
 type DummyDatabase struct{
-	DbFolder string `json:"db_folder"`
-	commandsList  []*types.Command
-	commandIndex  int
-	downloadLinks map[string]*types.DownloadLink
+	DbFolder 		string `json:"db_folder"`
+	commandsList  	[]*types.Command
+	commandIndex  	int
+	downloadLinks 	map[string]*types.DownloadLink
+	accounts 		[]*types.Account
+	accountsId 		int
 }
 
 func NewDummyDatabase(config *json.RawMessage)(d *DummyDatabase, err error){
@@ -26,6 +29,8 @@ func NewDummyDatabase(config *json.RawMessage)(d *DummyDatabase, err error){
 	d.commandsList = make([]*types.Command, 10)
 	d.commandIndex = 0
 	d.downloadLinks = make(map[string]*types.DownloadLink)
+	d.accountsId = 0
+	d.accounts = make([]*types.Account, 10)
 	if err = json.Unmarshal(*config, d); nil != err{
 		return nil, err
 	}
@@ -65,7 +70,6 @@ func (d *DummyDatabase)Log(level LogLevel, message string){
 	}
 }
 func (d *DummyDatabase)AddCommand(command *types.Command) (ref string, err error){
-	fmt.Println(command)
 	d.commandsList[d.commandIndex] = command
 	ref = strconv.Itoa(d.commandIndex)
 	d.commandIndex += 1
@@ -105,4 +109,71 @@ func (d *DummyDatabase)GetDownloadLink(ref string)(link *types.DownloadLink, err
 		return nil, errors.New(fmt.Sprintf("%s: %s", "Couldn't find this downloadLink", ref))
 	}
 	return res, nil
+}
+
+func (d *DummyDatabase)AddAccount(account *types.Account)(err error){
+
+	//Iter once to check if same user already exists
+	for _, item := range d.accounts{
+		if (item.Login == account.Login) || (item.Email == account.Email){
+			return errors.New("Account already exists")
+		}
+	}
+
+	//Todo Check that no other account has the same (Id, authType)
+	d.accounts[d.accountsId] = account
+	d.accountsId += 1
+	if len(d.accounts) == d.accountsId {
+		new_list := make([]*types.Account, len(d.accounts)*2)
+		for i, comm := range d.accounts {
+			new_list[i] = comm
+		}
+		d.accounts = new_list
+	}
+	d.Log(DEBUG, fmt.Sprintf( "%s : %s", "Saved new Account", account))
+
+	serialized, err := json.Marshal(d.accounts[0:d.accountsId])
+	if nil != err{
+		d.Log(ERROR, "Couldn't serialize accounts list...")
+		return err
+	}
+	accountsDBPath := path.Join(d.DbFolder, "accounts.json")
+ 	var fo *os.File
+	if _, err := os.Stat(accountsDBPath); err != nil {
+		if os.IsNotExist(err) {
+			fo, err = os.Create(accountsDBPath)
+			if nil != err{
+				return err
+			}
+		}else{
+			return err
+		}
+	}else{
+		fo, err = os.OpenFile(accountsDBPath, os.O_WRONLY, os.ModePerm)
+		if nil != err{
+			return err
+		}
+	}
+	nbWriten, err := fo.Write(serialized)
+	if nbWriten != len(serialized){
+		d.Log(ERROR, "Couldn't write serialized object")
+		return errors.New("Couldn't write serialized object")
+	}
+	err = fo.Close()
+	if nil != err{
+		d.Log(ERROR, "Failed to close the file")
+		return err
+	}
+
+	return nil
+}
+func (d *DummyDatabase)GetAccount(authType string, ref string)(account *types.Account, err error){
+	for _, elem := range d.accounts{
+		if (authType == elem.AuthType) && (ref == elem.Id){
+			return elem, nil
+		}
+	}
+	message := fmt.Sprintf("Couldn't find the desired account %s:%s", authType, ref)
+	d.Log(ERROR, message)
+	return nil, errors.New(message)
 }
