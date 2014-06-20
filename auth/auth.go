@@ -9,10 +9,10 @@ import (
 )
 
 //Should be called by authentication mechanism
-func NewAuthentication(auth string, config *json.RawMessage, r *mux.Router) (newAuth types.Authentication, err error) {
+func NewAuthentication(auth string, config *json.RawMessage, r *mux.Router, globalConfig *types.Configuration) (newAuth types.Authentication, err error) {
 	switch auth {
 	case dummy.Name:
-		newAuth, err = dummy.NewDummyAuth(config)
+		newAuth, err = dummy.NewDummyAuth(config, globalConfig)
 	default:
 		err = errors.New("Unknown authentication method " + auth)
 		newAuth = nil

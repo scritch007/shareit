@@ -99,20 +99,21 @@ func NewConfiguration(r *mux.Router) (resultConfig *types.Configuration) {
 	resultConfig.StaticPath = staticPath
 	resultConfig.WebPort = c.WebPort
 	//Now Start the Auth and DB configurations...
-	resultConfig.Auths = make([]types.Authentication, len(c.AuthConfig))
-	for i, elem := range c.AuthConfig {
-		authEntry, err := auth.NewAuthentication(elem.Type, &elem.Config, r)
-		if nil != err {
-			fmt.Println("Error: Error reading authentication configuration %s", err)
-			os.Exit(2)
-		}
-		resultConfig.Auths[i] = authEntry
-	}
 
 	resultConfig.Db, err = database.NewDatabase(c.DbConfig.Type, &c.DbConfig.Config)
 	if nil != err {
 		fmt.Println("Error: Error reading database configuration: ", err)
 		os.Exit(2)
+	}
+
+	resultConfig.Auths = make([]types.Authentication, len(c.AuthConfig))
+	for i, elem := range c.AuthConfig {
+		authEntry, err := auth.NewAuthentication(elem.Type, &elem.Config, r, resultConfig)
+		if nil != err {
+			fmt.Println("Error: Error reading authentication configuration %s", err)
+			os.Exit(2)
+		}
+		resultConfig.Auths[i] = authEntry
 	}
 
 	return resultConfig

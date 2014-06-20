@@ -115,8 +115,12 @@ func (d *DummyDatabase) GetDownloadLink(ref string) (link *types.DownloadLink, e
 
 func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
 
+	i := 0
+	var item *types.Account
 	//Iter once to check if same user already exists
-	for _, item := range d.accounts {
+	for i < d.accountsId {
+		item = d.accounts[i]
+		i += 1
 		if (item.Login == account.Login) || (item.Email == account.Email) {
 			return errors.New("Account already exists")
 		}
@@ -124,6 +128,7 @@ func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
 
 	//Todo Check that no other account has the same (Id, authType)
 	d.accounts[d.accountsId] = account
+	account.Id = account.Email
 	d.accountsId += 1
 	if len(d.accounts) == d.accountsId {
 		new_list := make([]*types.Account, len(d.accounts)*2)
