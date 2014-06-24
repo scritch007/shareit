@@ -35,3 +35,32 @@
 .text > input{
 	display: inline-block;
 }
+
+.icon-home {
+	font-size: 1.4em;
+	line-height: 1.7em;
+	vertical-align: bottom;
+}
+
+.browseable{
+	cursor: pointer;
+}
+
+th.browse-plus{
+	width:50px;
+}
+th.browse-action{
+	width: 200px;
+}
+th.browse-type{
+	width: 50px;
+}
+th.browse-kind{
+	width: 50px;
+}
+th.browse-mdate{
+	width: 200px;
+}
+th.browse-size{
+	width:100px;
+}

@@ -50,6 +50,7 @@ WualaDisplay.prototype.GetBrowsingPathElement = function(path, onBrowseChangeCB)
 
 WualaDisplay.prototype.GetFilesListElement = function(path){
 	var browse_div = document.createElement("table");
+	browse_div.style.tableLayout = "fixed";
 	browse_div.className = "footable twelve";
 	browsing.innerHTML = "";
 	this.thead = document.createElement("thead");
@@ -59,45 +60,47 @@ WualaDisplay.prototype.GetFilesListElement = function(path){
 
 	//For the mobile
 	var th = document.createElement("th");
-	th.className = "mob";
+	th.className = "mob browse-plus";
 	tr.appendChild(th);
 	//File Type
 	th = document.createElement("th");
 	th.innerHTML = "#";
+	th.className = "browse-type";
 	tr.appendChild(th);
 
 	//FileName
 	th = document.createElement("th");
 	th.innerHTML = "Name";
+	th.className = "browse-name";
 	tr.appendChild(th);
 
 	//mob
 	th = document.createElement("th");
-	th.className = "mob";
+	th.className = "mob browse-unknown";
 	tr.appendChild(th);
 
 	//Size
 	th = document.createElement("th");
 	th.innerHTML = "Size";
-	th.className = "hide-for-small";
+	th.className = "hide-for-small browse-size";
 	tr.appendChild(th);
 
 	//Mdate
 	th = document.createElement("th");
 	th.innerHTML = "Change";
-	th.className = "hide-for-small";
+	th.className = "hide-for-small browse-mdate";
 	tr.appendChild(th);
 
 	//kind
 	th = document.createElement("th");
 	th.innerHTML = "Kind";
-	th.className = "hide-for-small";
+	th.className = "hide-for-small browse-kind";
 	tr.appendChild(th);
 
 	//Actions
 	th = document.createElement("th");
 	th.innerHTML = "Actions";
-	th.className = "hide-for-small";
+	th.className = "hide-for-small browse-action";
 	tr.appendChild(th);
 
 	this.tbody = document.createElement("tbody");
@@ -141,6 +144,13 @@ WualaDisplay.prototype.buildButtonDiv = function(element, displayName, 	onBrowse
 
 WualaDisplay.prototype.AddElement = function(list, element, displayName, onBrowseCB, onDownloadCB, onDeleteCB){
 	var name = displayName;
+	if (null == element){
+		element = {
+			size: "-",
+			kind: "-",
+			mDate: "-"
+		}
+	}
 	var tr = document.createElement("tr");
 	tr.className = "w-open-path pointer ";
 	//TODO TO REMOVE AFTER REWRITING IT
@@ -175,6 +185,7 @@ WualaDisplay.prototype.AddElement = function(list, element, displayName, onBrows
 	tr.appendChild(td);
 
 	if (onBrowseCB){
+		tr.className = "browseable";
 		img.className = "wred icon-large icon-folder-close";
 		tr.onclick = function(path, event){
 			onBrowseCB(event);
@@ -192,19 +203,20 @@ WualaDisplay.prototype.AddElement = function(list, element, displayName, onBrows
 
 	//Size
 	th = document.createElement("td");
-	th.innerHTML = "-";
+	th.innerHTML = element.size;
+
 	th.className = "hide-for-small";
 	tr.appendChild(th);
 
 	//Mdate
 	th = document.createElement("td");
-	th.innerHTML = "-";
+	th.innerHTML = element.mDate;
 	th.className = "hide-for-small";
 	tr.appendChild(th);
 
 	//kind
 	th = document.createElement("td");
-	th.innerHTML = "-";
+	th.innerHTML = element.kind;
 	th.className = "hide-for-small";
 	tr.appendChild(th);
 
@@ -220,7 +232,7 @@ WualaDisplay.prototype.AddElement = function(list, element, displayName, onBrows
 	mobtr.className = "hide";
 	mobtr.style.display = "none";
 	td = document.createElement("td");
-	td.colSpan = "8";
+	td.colSpan = "4";
 	mobtr.appendChild(td);
 
 	if (null != onDownloadCB && undefined != onDownloadCB){

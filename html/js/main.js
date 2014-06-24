@@ -18,21 +18,18 @@ function init(){
 	browse("/");
 }
 function browse(path){
-	command = {
-		name: "browser.browse",
-		browse_command:{
-			"path": path
-		}
-	}
-	$.post(
-		"/commands",
-		JSON.stringify(command),
+	sendRequest("/commands", "POST",
+		{
+			name: "browser.browse",
+			browse_command:{
+				"path": path
+			}
+		},
 		function(result){
 			current_folder = path;
 			display(result);
-		},
-		"json"
-	);
+		}
+	)
 }
 
 function display(result){
@@ -77,20 +74,18 @@ function display(result){
 		}else{
 			downloadCB = function(path, event){
 				event.stopPropagation()
-				command = {
-					name: "browser.download_link",
-					download_link_command:{
-						"path": path
-					}
-				}
-				$.post(
-					"/commands",
-					JSON.stringify(command),
+				sendRequest("/commands",
+					"POST",
+					{
+						name: "browser.download_link",
+						download_link_command:{
+							"path": path
+						}
+					},
 					function(result){
 						console.log(result.download_link_command.download_link);
 						setPopup(downloadPopup(path, result.download_link_command.download_link.link));
-					},
-					"json"
+					}
 				);
 			}.bind(element, element_path);
 		}
@@ -137,21 +132,20 @@ function createFolder(){
 		if ("/" != path.charAt(path.length - 1)){
 			path = path + "/";
 		}
-		command = {
-			name: "browser.create_folder",
-			create_folder_command:{
-				"path": path + folderNameInput.value
-			}
-		}
-		$.post(
+		sendRequest(
 			"/commands",
-			JSON.stringify(command),
+			"POST",
+			{
+				name: "browser.create_folder",
+				create_folder_command:{
+					"path": path + folderNameInput.value
+				}
+			},
 			function(result){
 				browse(current_folder);
 				createFolderPopup.parentNode.removeChild(createFolderPopup);
-			},
-			"json"
-		);
+			}
+		)
 	}
 	goButton.className = "button small";
 	buttonDiv.appendChild(goButton);
@@ -237,20 +231,19 @@ function deletePopup(path){
 	ok_button.value = "Yes";
 	ok_button.className = "button primary";
 	ok_button.onclick = function(){
-		command = {
-			name: "browser.delete_item",
-			delete_command:{
-				"path": path
-			}
-		}
-		$.post(
+		sendRequest(
 			"/commands",
-			JSON.stringify(command),
+			"POST",
+			{
+				name: "browser.delete_item",
+				delete_command:{
+					"path": path
+				}
+			},
 			function(result){
 				window_div.parentNode.removeChild(window_div);
 				browse(current_folder);
-			},
-			"json"
+			}
 		);
 	};
 	buttonDiv.appendChild(ok_button);

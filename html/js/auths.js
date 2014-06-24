@@ -1,4 +1,4 @@
-var availableAuths = []
+var availableAuths = [];
 
 function HandleAuthsResult(result){
 	console.log(result);
@@ -74,7 +74,7 @@ function signup(){
 	goButton.onclick = function(){
 		goButton.disabled = true;
 		cancelButton.disabled = true;
-		$.post("/auths/dummy/create", JSON.stringify({
+		$.post("/auths/DummyAuth/create", JSON.stringify({
 			"login": loginInput.value,
 			"password": passwordInput.value,
 			"email": emailInput.value
@@ -88,4 +88,96 @@ function signup(){
 	buttonDiv.appendChild(goButton);
 	signupWindow.appendChild(buttonDiv);
 	setPopup(signupWindow);
+}
+
+function login(){
+	var loginWindow = document.createElement("div");
+	loginWindow.className = "window shadow";
+	var caption = Caption("Log in");
+	loginWindow.appendChild(caption);
+	var contentDiv = document.createElement("div");
+	loginWindow.appendChild(contentDiv);
+	var loginDiv = document.createElement("div");
+	var loginLabel = document.createElement("label");
+	loginLabel.innerHTML = "Login";
+	var loginInput = document.createElement("input");
+	loginInput.type = "text";
+	loginDiv.appendChild(loginLabel);
+	loginDiv.appendChild(loginInput);
+	contentDiv.appendChild(loginDiv);
+	var passwordDiv = document.createElement("div");
+	var passwordLabel = document.createElement("label");
+	passwordLabel.innerHTML = "Password";
+	var passwordInput = document.createElement("input");
+	passwordInput.type = "text";
+	passwordDiv.appendChild(passwordLabel);
+	passwordDiv.appendChild(passwordInput);
+	contentDiv.appendChild(passwordDiv);
+	var buttonDiv = document.createElement("div");
+	buttonDiv.className = "footer";
+	var cancelButton = document.createElement("a");
+	cancelButton.type = "button small";
+	cancelButton.innerHTML = "Cancel";
+	cancelButton.className = "button small";
+	cancelButton.onclick = function(){
+		loginWindow.parentNode.removeChild(loginWindow);
+	}
+	buttonDiv.appendChild(cancelButton);
+	var goButton = document.createElement("a");
+	goButton.innerHTML = "Create";
+	goButton.onclick = function(){
+		goButton.disabled = true;
+		cancelButton.disabled = true;
+		//Get the challenge
+		sendRequest("/auths/DummyAuth/get_challenge","GET", null, function(result){
+			//TODO at one point we should hash the challenge but never mind for now :)
+			sendRequest("/auths/DummyAuth/auth", "POST", {
+				"login": loginInput.value,
+				"challenge_hash": result.challenge + ":" + passwordInput.value,
+				"ref": result.ref
+			}, function(result){
+				//Set the Global Header
+				authorizationToken = result.authentication_header;
+				loginWindow.parentNode.removeChild(loginWindow);
+			});
+		});
+	}
+	goButton.className = "button small";
+	buttonDiv.appendChild(goButton);
+	loginWindow.appendChild(buttonDiv);
+	return setPopup(loginWindow);
+}
+
+function logout(){
+	
+}
+
+var authorizationToken = null;
+
+function sendRequest(url, method, data, resultCB, errorCB){
+	request = {
+        type:method,
+        beforeSend: function (request)
+        {
+        	if (null != authorizationToken){
+        		request.setRequestHeader("Authentication", authorizationToken);
+        	}
+
+        },
+        url: url,
+        processData: false,
+        success: function(results) {
+                resultCB(results);
+        },
+        error: function(request, status, error){
+        	if ((null != errorCB) && (undefined != errorCB)){
+        		errorCB(status, error);
+        	}
+        },
+        dataType:"json"
+    }
+    if (null != data){
+    	request.data = JSON.stringify(data);
+    }
+   	$.ajax(request);
 }
