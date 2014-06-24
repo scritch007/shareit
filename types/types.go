@@ -3,14 +3,13 @@ package types
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
 	//  "fmt"
 )
 
 type DatabaseInterface interface {
 	Name() string
-	AddCommand(command *Command) (ref string, err error)
-	ListCommands(offset int, limit int, search_parameters *CommandsSearchParameters) ([]*Command, int, error) //set limit to -1 for retrieving all the elements, search_parameters will be used to filter response
+	ListCommands(user *string, offset int, limit int, search_parameters *CommandsSearchParameters) ([]*Command, int, error) //set limit to -1 for retrieving all the elements, search_parameters will be used to filter response
+	SaveCommand(command *Command)(err error)
 	GetCommand(ref string) (command *Command, err error)
 	DeleteCommand(ref *string) (err error)
 	AddDownloadLink(link *DownloadLink) (err error)
@@ -19,11 +18,12 @@ type DatabaseInterface interface {
 	//We need to implement some authentication structures to
 	AddAccount(account *Account) (err error)
 	GetAccount(authType string, ref string) (account *Account, err error)
-}
+	GetUserAccount(id string)(account *Account, err error)
+	ListAccounts(map[string]string searchDict)(accounts []*Account, err error)
 
-type Authentication interface {
-	Name() string
-	AddRoutes(r *mux.Router) error
+	StoreSession(session *Session)(err error)
+	GetSession(ref string)(session *Session, err error)
+	RemoveSession(ref string)(err error)
 }
 
 type Account struct {
@@ -35,6 +35,11 @@ type Account struct {
 	//Add some other infos here for all the specific stuffs
 }
 
+type Session struct {
+	AuthenticationHeader string
+	UserId string
+}
+
 //Configuration Structure
 type Configuration struct {
 	RootPrefix string
@@ -42,15 +47,7 @@ type Configuration struct {
 	StaticPath string
 	WebPort    string
 	Db         DatabaseInterface
-	Auths      []Authentication
-}
-
-func (c *Configuration) GetAvailableAuthentications() []string {
-	res := make([]string, len(c.Auths))
-	for i, elem := range c.Auths {
-		res[i] = elem.Name()
-	}
-	return res
+	Auth 	   *Authentication
 }
 
 type DownloadLink struct {
@@ -89,8 +86,8 @@ type StorageItem struct {
 	Name             string `json:"name"`
 	IsDir            bool   `json:"isDir"`
 	ModificationDate int64  `json:"mDate"`
-	ChangeDate       int    `json:"cDate"`
 	Size             int64  `json:"size"`
+	Kind             string `json:"kind"`
 }
 type CommandsSearchParameters struct {
 	Status *EnumStatus `json:"status,omitempty"`
@@ -126,6 +123,7 @@ type Command struct {
 	Delete               *CommandDeleteItem   `json:"delete_command,omitempty"`
 	CreateFolder         *CommandCreateFolder `json:"create_folder_command,omitempty"`
 	GenerateDownloadLink *CommandDownloadLink `json:"download_link_command,omitempty"`
+	User 				 *string              //This is only used internally to know who is actually making the request
 }
 
 func (c *Command) String() string {

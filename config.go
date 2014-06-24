@@ -13,18 +13,18 @@ import (
 	"path/filepath"
 )
 
+
 type configSubStruct struct {
 	Type   string          `json:"type"`
-	Config json.RawMessage `json:"config"`
+	Config *json.RawMessage `json:"config"`
 }
-
 type readConfiguration struct {
 	RootPrefix string            `json:"root_prefix"`
 	PrivateKey string            `json:"private_key"`
 	StaticPath string            `json:"static_path"`
 	WebPort    string            `json:"web_port"`
-	AuthConfig []configSubStruct `json:"auth"`
 	DbConfig   configSubStruct   `json:"database"`
+	AuthConfig *json.RawMessage  `json:"auth"`
 }
 
 func NewConfiguration(r *mux.Router) (resultConfig *types.Configuration) {
@@ -100,21 +100,15 @@ func NewConfiguration(r *mux.Router) (resultConfig *types.Configuration) {
 	resultConfig.WebPort = c.WebPort
 	//Now Start the Auth and DB configurations...
 
-	resultConfig.Db, err = database.NewDatabase(c.DbConfig.Type, &c.DbConfig.Config)
+	resultConfig.Db, err = database.NewDatabase(c.DbConfig.Type, c.DbConfig.Config)
 	if nil != err {
 		fmt.Println("Error: Error reading database configuration: ", err)
 		os.Exit(2)
 	}
 
-	resultConfig.Auths = make([]types.Authentication, len(c.AuthConfig))
-	for i, elem := range c.AuthConfig {
-		authEntry, err := auth.NewAuthentication(elem.Type, &elem.Config, r, resultConfig)
-		if nil != err {
-			fmt.Println("Error: Error reading authentication configuration %s", err)
-			os.Exit(2)
-		}
-		resultConfig.Auths[i] = authEntry
+	resultConfig.Auth, err = auth.NewAuthentication(c.AuthConfig, r, resultConfig)
+	if nil != err{
+		fmt.Println("Error: Error reading authentication configuration", err)
 	}
-
 	return resultConfig
 }

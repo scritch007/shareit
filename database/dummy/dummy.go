@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"io/ioutil"
 	//"github.com/scritch007/shareit/database"
 )
 
@@ -22,6 +23,8 @@ type DummyDatabase struct {
 	downloadLinks map[string]*types.DownloadLink
 	accounts      []*types.Account
 	accountsId    int
+	accountsDBPath string
+	sessionMap map[string]*types.Session
 }
 
 func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
@@ -29,8 +32,7 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 	d.commandsList = make([]*types.Command, 10)
 	d.commandIndex = 0
 	d.downloadLinks = make(map[string]*types.DownloadLink)
-	d.accountsId = 0
-	d.accounts = make([]*types.Account, 10)
+	d.sessionMap = make(map[string]*types.Session)
 	if err = json.Unmarshal(*config, d); nil != err {
 		return nil, err
 	}
@@ -42,6 +44,31 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 			fmt.Println("Error: Something went wrong when accessing to %s, %v", d.DbFolder, err)
 		}
 		return nil, err
+	}
+	d.accountsDBPath = path.Join(d.DbFolder, "accounts.json")
+	if _, err := os.Stat(d.accountsDBPath); err != nil {
+		var fo *os.File
+		if os.IsNotExist(err) {
+			fo, err = os.Create(d.accountsDBPath)
+			if nil != err {
+				return nil, err
+			}
+			defer fo.Close()
+		} else {
+			return nil, err
+		}
+		d.accounts = make([]*types.Account, 10)
+		d.accountsId = 0
+	}else{
+		file, err := ioutil.ReadFile(d.accountsDBPath)
+    	if err != nil {
+    	    return nil, err
+    	}
+		err = json.Unmarshal(file, &d.accounts)
+		if nil != err {
+			return nil, err
+		}
+		d.accountsId = len(d.accounts)
 	}
 	return d, nil
 }
@@ -71,22 +98,32 @@ func (d *DummyDatabase) Log(level LogLevel, message string) {
 		types.LOG_ERROR.Println("DummyDb: ", message)
 	}
 }
-func (d *DummyDatabase) AddCommand(command *types.Command) (ref string, err error) {
-	d.commandsList[d.commandIndex] = command
-	ref = strconv.Itoa(d.commandIndex)
-	d.commandIndex += 1
-	if len(d.commandsList) == d.commandIndex {
-		new_list := make([]*types.Command, len(d.commandsList)*2)
-		for i, comm := range d.commandsList {
-			new_list[i] = comm
+func (d *DummyDatabase) SaveCommand(command *types.Command) (err error) {
+	if 0 == len(command.CommandId){
+		d.commandsList[d.commandIndex] = command
+		command.CommandId = strconv.Itoa(d.commandIndex)
+		d.commandIndex += 1
+		if len(d.commandsList) == d.commandIndex {
+			new_list := make([]*types.Command, len(d.commandsList)*2)
+			for i, comm := range d.commandsList {
+				new_list[i] = comm
+			}
+			d.commandsList = new_list
 		}
-		d.commandsList = new_list
 	}
 	d.Log(DEBUG, fmt.Sprintf("%s : %s", "Saved new Command", command))
-	return ref, nil
+	return nil
 }
-func (d *DummyDatabase) ListCommands(offset int, limit int, search_parameters *types.CommandsSearchParameters) ([]*types.Command, int, error) {
-	return d.commandsList[0:d.commandIndex], d.commandIndex, nil
+func (d *DummyDatabase) ListCommands(user *string, offset int, limit int, search_parameters *types.CommandsSearchParameters) ([]*types.Command, int, error) {
+	tempResult := make([]*types.Command, d.commandIndex) // Maximum size this could have
+	nbResult := 0
+	for _, elem := range d.commandsList[0:d.commandIndex]{
+		if elem.User == user{
+			tempResult[nbResult] = elem
+			nbResult += 1
+		}
+	}
+	return tempResult[0:nbResult], nbResult, nil
 }
 func (d *DummyDatabase) GetCommand(ref string) (command *types.Command, err error) {
 	command_id, err := strconv.ParseInt(ref, 0, 0)
@@ -96,6 +133,7 @@ func (d *DummyDatabase) GetCommand(ref string) (command *types.Command, err erro
 	command = d.commandsList[command_id]
 	return command, nil
 }
+
 func (d *DummyDatabase) DeleteCommand(ref *string) error {
 	return nil
 }
@@ -144,43 +182,63 @@ func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
 		d.Log(ERROR, "Couldn't serialize accounts list...")
 		return err
 	}
-	accountsDBPath := path.Join(d.DbFolder, "accounts.json")
+
 	var fo *os.File
-	if _, err := os.Stat(accountsDBPath); err != nil {
-		if os.IsNotExist(err) {
-			fo, err = os.Create(accountsDBPath)
-			if nil != err {
-				return err
-			}
-		} else {
-			return err
-		}
-	} else {
-		fo, err = os.OpenFile(accountsDBPath, os.O_WRONLY, os.ModePerm)
-		if nil != err {
-			return err
-		}
+	fo, err = os.OpenFile(d.accountsDBPath, os.O_WRONLY, os.ModePerm)
+	if nil != err {
+		return err
 	}
+	defer fo.Close()
 	nbWriten, err := fo.Write(serialized)
 	if nbWriten != len(serialized) {
 		d.Log(ERROR, "Couldn't write serialized object")
 		return errors.New("Couldn't write serialized object")
 	}
-	err = fo.Close()
-	if nil != err {
-		d.Log(ERROR, "Failed to close the file")
-		return err
-	}
 
 	return nil
 }
 func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.Account, err error) {
-	for _, elem := range d.accounts {
-		if (authType == elem.AuthType) && (ref == elem.Id) {
+	for _, elem := range d.accounts[0:d.accountsId] {
+		d.Log(DEBUG, fmt.Sprintf("Looking for %s:%s comparing with %s:%s||%s", authType, ref, elem.AuthType, elem.Email, elem.Login))
+		if (authType == elem.AuthType) && ((ref == elem.Email) || (ref == elem.Login)) {
 			return elem, nil
 		}
 	}
 	message := fmt.Sprintf("Couldn't find the desired account %s:%s", authType, ref)
 	d.Log(ERROR, message)
 	return nil, errors.New(message)
+}
+func (d *DummyDatabase) GetUserAccount(id string) (account *types.Account, err error) {
+	for _, elem := range d.accounts[0:d.accountsId] {
+		d.Log(DEBUG, fmt.Sprintf("Looking for %s comparing with %s", id, elem.Id))
+		if (id == elem.Id){
+			return elem, nil
+		}
+	}
+	message := fmt.Sprintf("Couldn't find the desired account %s", id)
+	d.Log(ERROR, message)
+	return nil, errors.New(message)
+}
+
+func (d *DummyDatabase)ListAccounts()(accounts []*types.Account, err error){
+	return d.accounts[0:d.accountsId], nil
+}
+
+
+func (d *DummyDatabase) StoreSession(session *types.Session)(err error){
+	d.sessionMap[session.AuthenticationHeader] = session
+	return nil
+}
+func (d *DummyDatabase) GetSession(ref string)(session *types.Session, err error){
+	session, found := d.sessionMap[ref]
+	if !found{
+		return nil, errors.New("Couldn't find session")
+	}
+	return session, nil
+}
+
+
+func (d *DummyDatabase) RemoveSession(ref string)(err error){
+	delete (d.sessionMap, ref)
+	return nil
 }

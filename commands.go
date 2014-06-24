@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	//	"strconv"
 	"github.com/scritch007/shareit/types"
 	"time"
@@ -22,12 +23,7 @@ type CommandHandler struct {
 }
 
 func (c *CommandHandler) save(command *types.Command) error {
-	ref, err := c.config.Db.AddCommand(command)
-	if nil != err {
-		return err
-	}
-	command.CommandId = ref
-	return nil
+	return c.config.Db.SaveCommand(command)
 }
 
 // CommandHandler constructor
@@ -140,6 +136,9 @@ func (c *CommandHandler) browseCommand(command *types.Command, resp chan<- bool)
 		s := types.StorageItem{Name: file.Name(), IsDir: file.IsDir(), ModificationDate: file.ModTime().Unix()}
 		if !file.IsDir() {
 			s.Size = file.Size()
+			s.Kind = filepath.Ext(file.Name());
+		}else{
+			s.Kind = "folder"
 		}
 		result[i] = s
 	}
@@ -151,9 +150,14 @@ func (c *CommandHandler) browseCommand(command *types.Command, resp chan<- bool)
 //Handle Request on /commands
 //Only GET and POST request are available
 func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
+	user, err := c.config.Auth.GetAuthenticatedUser(w, r)
+	if nil != err{
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
 	if "GET" == r.Method {
 		// We want to list the commands that have been already answered
-		commands, _, err := c.config.Db.ListCommands(0, -1, nil)
+		commands, _, err := c.config.Db.ListCommands(user, 0, -1, nil)
 		if nil != err {
 			errMessage := fmt.Sprintf("Invalid Input: %s", err)
 			types.LOG_ERROR.Println(errMessage)
@@ -166,6 +170,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	}
 	// Extract the POST body
 	command := new(types.Command)
+
 	input, err := ioutil.ReadAll(r.Body)
 	if nil != err {
 		errMessage := fmt.Sprintf("1 Failed with error code: %s", err)
@@ -174,19 +179,19 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = json.Unmarshal(input, command)
+	command.User = user //Store current user
 	if nil != err {
 		//TODO Set erro Code
-	}
-	err = c.save(command)
-	if nil != err {
-		//TODO Set error code Properly
-		return
 	}
 	channel := make(chan bool)
 	command.State.Progress = 0
 	command.State.ErrorCode = 0
 	command.State.Status = types.COMMAND_STATUS_IN_PROGRESS
-	//TODO start a timer or something like this so that we can timeout the request
+	err = c.save(command)
+	if nil != err {
+		//TODO do something in that case
+		return
+	}
 	if command.Name == types.EnumBrowserBrowse {
 		go c.browseCommand(command, channel)
 	} else if command.Name == types.EnumBrowserCreateFolder {
@@ -203,7 +208,8 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	if 0 == timeout {
 		timeout = 10
 	}
-	timer := time.NewTimer(timeout * time.Second)
+	timer := time.NewTimer(1 /*timeout * time.Second*/)
+
 	select {
 	case a := <-channel:
 		fmt.Println("Got answer from command")
@@ -214,17 +220,37 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 			command.State.Status = types.COMMAND_STATUS_ERROR
 		}
 		command.State.Progress = 100
+		c.save(command)
 	case <-timer.C:
 		fmt.Println("Timer just elapsed")
+		go func(){
+			//Wait for the command to end
+			a := <-channel
+			if a {
+				command.State.Status = types.COMMAND_STATUS_DONE
+			} else {
+				command.State.Status = types.COMMAND_STATUS_ERROR
+			}
+			command.State.Progress = 100
+			c.save(command)
+		}()
 	}
 	b, _ := json.Marshal(command)
 	io.WriteString(w, string(b))
 }
 
 func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
+	user, err := c.config.Auth.GetAuthenticatedUser(w, r)
+	if nil != err{
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
 	vars := mux.Vars(r)
 	ref := vars["command_id"]
 	command, err := c.config.Db.GetCommand(ref)
+	if command.User != user{
+		http.Error(w, "You are trying to access some resources that do not belong to you", http.StatusUnauthorized)
+	}
 	if nil != err {
 		return
 	}

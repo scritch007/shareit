@@ -41,7 +41,7 @@ func (m *Main) homeHandler(w http.ResponseWriter, r *http.Request) {
 
 func (m *Main) authsHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Requested the available auths")
-	b, _ := json.Marshal(m.config.GetAvailableAuthentications())
+	b, _ := json.Marshal(m.config.Auth.GetAvailableAuthentications())
 	io.WriteString(w, string(b))
 }
 
@@ -59,6 +59,8 @@ func main() {
 	r.HandleFunc("/commands/{command_id}", c.Command).Methods("GET", "PUT", "DELETE")
 	r.HandleFunc("/downloads/{file:.*}", c.Download).Methods("GET")
 	r.HandleFunc("/auths", m.authsHandler).Methods("GET")
+	r.HandleFunc("/auths/logout", config.Auth.LogOut).Methods("GET")
+	r.HandleFunc("/auths/list_users", config.Auth.ListUsers).Methods("GET")
 	r.HandleFunc("/js/{file:.*}", m.serveJSFile)
 	r.HandleFunc("/css/{file:.*}", m.serveCSSFile)
 	r.HandleFunc("/img/{file:.*}", m.serveIMGFile)

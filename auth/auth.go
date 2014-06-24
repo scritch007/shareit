@@ -8,17 +8,35 @@ import (
 	"github.com/scritch007/shareit/types"
 )
 
+type configSubStruct struct {
+	Type   string          `json:"type"`
+	Config *json.RawMessage `json:"config"`
+}
+
 //Should be called by authentication mechanism
-func NewAuthentication(auth string, config *json.RawMessage, r *mux.Router, globalConfig *types.Configuration) (newAuth types.Authentication, err error) {
-	switch auth {
-	case dummy.Name:
-		newAuth, err = dummy.NewDummyAuth(config, globalConfig)
-	default:
-		err = errors.New("Unknown authentication method " + auth)
-		newAuth = nil
+func NewAuthentication(config *json.RawMessage, r *mux.Router, globalConfig *types.Configuration) (newAuth *types.Authentication, err error) {
+	var authConfigs []configSubStruct
+	err = json.Unmarshal(*config, &authConfigs)
+	newAuth = new(types.Authentication)
+	newAuth.Config = globalConfig
+	newAuth.Auths = make([]types.SubAuthentication, len(authConfigs))
+	var newSubAuth types.SubAuthentication
+	for i, elem := range authConfigs {
+		switch elem.Type {
+		case dummy.Name:
+			newSubAuth, err = dummy.NewDummyAuth(elem.Config, globalConfig)
+		default:
+			err = errors.New("Unknown authentication method " + elem.Type)
+			newAuth = nil
+		}
+		if nil != err{
+			return nil, err
+		}
+		newSubAuth.AddRoutes(r)
+		newAuth.Auths[i] = newSubAuth
 	}
-	if nil == err {
-		newAuth.AddRoutes(r)
-	}
+
+
 	return newAuth, err
 }
+
