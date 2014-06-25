@@ -14,33 +14,55 @@ function init(){
 	mainWindow = document.getElementById("window_popup_id");
 	$.getJSON("/auths", function(result){
 		HandleAuthsResult(result);
+		checkAuth(function(loggedUser){
+			if (null != loggedUser){
+				//Display the current user name somewhere
+			}
+			browse("/");
+		});
 	});
-	browse("/");
 }
 function browse(path){
-	sendRequest("/commands", "POST",
-		{
-			name: "browser.browse",
-			browse_command:{
-				"path": path
-			}
-		},
-		function(result){
-			current_folder = path;
-			display(result);
+	function onSuccessCB(result){
+		if (2 == result.state.status){
+			window.setTimeout(function(){
+				sendRequest({
+					url:"/commands/" + this.command_id,
+					method:"GET",
+					onSuccess: onSuccessCB
+				});
+			}.bind(result), 3000);
+			return
 		}
-	)
+		current_folder = path;
+		display(result);
+	}
+	sendRequest(
+		{
+			url:"/commands",
+			method: "POST",
+			data: {
+				name: "browser.list",
+				browser:{
+					list:{
+						"path": path
+					}
+				}
+			},
+			onSuccess:onSuccessCB
+		}
+	);
 }
 
 function display(result){
-	var path = result.browse_command.path;
+	var path = result.browser.list.path;
 	if ("/" != path.charAt(path.length - 1)){
 		path = path + "/";
 	}
 	displayTheme.GetBrowsingPathElement(path, browse);
 	var elementListObject = displayTheme.GetFilesListElement(path);
 
-	if ("/" != result.browse_command.path){
+	if ("/" != path){
 		displayTheme.AddElement(elementListObject, null, "..",
 			function(event){
 				var path = this;
@@ -54,11 +76,11 @@ function display(result){
 					path = "/";
 				}
 				browse(path);
-			}.bind(result.browse_command.path)
+			}.bind(path)
 		);
 	}
-	for(var i=0; i<result.browse_command.results.length; i++){
-		var element = result.browse_command.results[i];
+	for(var i=0; i<result.browser.list.results.length; i++){
+		var element = result.browser.list.results[i];
 		element_path = path + element.name;
 		var downloadCB = null;
 		var browseCB = null;

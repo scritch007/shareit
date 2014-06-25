@@ -14,6 +14,19 @@ function HandleAuthsResult(result){
 	}
 }
 
+function checkAuth(callback){
+	if (undefined != localStorage.Authentication){
+		//Hide login button and show logout one
+		document.getElementById("logout").style.display="";
+		document.getElementById("login").style.display="none";
+		authorizationToken = localStorage.Authentication;
+		//Todo ask for who you really are
+		callback(localStorage.Authentication);
+	}else{
+		callback(null);
+	}
+}
+
 function signup(){
 	var signupWindow = document.createElement("div");
 	signupWindow.className = "window shadow";
@@ -136,9 +149,13 @@ function login(){
 				"challenge_hash": result.challenge + ":" + passwordInput.value,
 				"ref": result.ref
 			}, function(result){
+				//Hide login button and show logout one
+				document.getElementById("logout").style.display="";
+				document.getElementById("login").style.display="none";
 				//Set the Global Header
 				authorizationToken = result.authentication_header;
 				loginWindow.parentNode.removeChild(loginWindow);
+				localStorage.Authentication = authorizationToken;
 			});
 		});
 	}
@@ -149,14 +166,17 @@ function login(){
 }
 
 function logout(){
-	
+	delete localStorage.Authentication;
+	//Hide login button and show logout one
+	document.getElementById("logout").style.display="none";
+	document.getElementById("login").style.display="";
 }
 
 var authorizationToken = null;
 
-function sendRequest(url, method, data, resultCB, errorCB){
+function sendRequest(obj){
 	request = {
-        type:method,
+        type:obj.method,
         beforeSend: function (request)
         {
         	if (null != authorizationToken){
@@ -164,20 +184,20 @@ function sendRequest(url, method, data, resultCB, errorCB){
         	}
 
         },
-        url: url,
+        url: obj.url,
         processData: false,
         success: function(results) {
-                resultCB(results);
+			obj.onSuccess(results);
         },
         error: function(request, status, error){
         	if ((null != errorCB) && (undefined != errorCB)){
-        		errorCB(status, error);
+        		obj.errorCB(status, error);
         	}
         },
         dataType:"json"
     }
-    if (null != data){
-    	request.data = JSON.stringify(data);
+    if (null != obj.data || undefined != obj.data){
+    	request.data = JSON.stringify(obj.data);
     }
    	$.ajax(request);
 }

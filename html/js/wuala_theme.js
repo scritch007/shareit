@@ -110,7 +110,7 @@ WualaDisplay.prototype.GetFilesListElement = function(path){
 	return browse_div;
 }
 
-WualaDisplay.prototype.buildButtonDiv = function(element, displayName, 	onBrowseCB, onDownloadCB, onDeleteCB){
+WualaDisplay.prototype.buildButtonDiv = function(element, displayName, 	onBrowseCB, onDownloadCB, onDeleteCB, onShareCB){
 	var buttonDiv = document.createElement("div");
 	buttonDiv.className = "actions";
 	if (null != onDeleteCB && undefined != onDeleteCB)
@@ -122,7 +122,7 @@ WualaDisplay.prototype.buildButtonDiv = function(element, displayName, 	onBrowse
 		deleteButton.appendChild(i);
 		deleteButton.onclick = function(path, event){
 			onDeleteCB(event);
-		}.bind(a, name);
+		}.bind(element, displayName);
 		buttonDiv.appendChild(deleteButton);
 	}
 
@@ -135,14 +135,24 @@ WualaDisplay.prototype.buildButtonDiv = function(element, displayName, 	onBrowse
 		downloadButton.appendChild(i);
 		downloadButton.onclick = function(path, event){
 			onDownloadCB(event);
-		}.bind(a, name);
+		}.bind(element, displayName);
 		buttonDiv.appendChild(document.createTextNode('\u00A0'));
 		buttonDiv.appendChild(downloadButton);
+	}
+
+	if (null != onShareCB && undefined != onShareCB){
+		var shareButton = document.createElement("a");
+		shareButton.className = "button small w-open-sharing";
+		var i = document.createElement("i");
+		i.className = "icon-share-alt";
+		shareButton.onclick = function(path, event){
+			onShareCB(event);
+		}.bind(element, displayName);
 	}
 	return buttonDiv;
 }
 
-WualaDisplay.prototype.AddElement = function(list, element, displayName, onBrowseCB, onDownloadCB, onDeleteCB){
+WualaDisplay.prototype.AddElement = function(list, element, displayName, onBrowseCB, onDownloadCB, onDeleteCB, onShareCB){
 	var name = displayName;
 	if (null == element){
 		element = {
@@ -224,7 +234,7 @@ WualaDisplay.prototype.AddElement = function(list, element, displayName, onBrows
 	td.className = "hide-for-small";
 	tr.appendChild(td);
 
-	var buttonDiv = this.buildButtonDiv(element, displayName, onBrowseCB, onDownloadCB, onDeleteCB);
+	var buttonDiv = this.buildButtonDiv(element, displayName, onBrowseCB, onDownloadCB, onDeleteCB, onShareCB);
 	td.appendChild(buttonDiv);
 	this.tbody.appendChild(a);
 	//TODO make another one for the phones :)

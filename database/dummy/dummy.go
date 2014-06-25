@@ -25,6 +25,8 @@ type DummyDatabase struct {
 	accountsId    int
 	accountsDBPath string
 	sessionMap map[string]*types.Session
+	shareLinkMap map[string]*types.ShareLinkCommand
+	shareLinkPath string
 }
 
 func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
@@ -59,6 +61,7 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 		}
 		d.accounts = make([]*types.Account, 10)
 		d.accountsId = 0
+		d.saveDb()
 	}else{
 		file, err := ioutil.ReadFile(d.accountsDBPath)
     	if err != nil {
@@ -69,6 +72,30 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 			return nil, err
 		}
 		d.accountsId = len(d.accounts)
+	}
+	d.shareLinkPath = path.Join(d.DbFolder, "share_links.json")
+	if _, err := os.Stat(d.shareLinkPath); err != nil {
+		var fo *os.File
+		if os.IsNotExist(err) {
+			fo, err = os.Create(d.shareLinkPath)
+			if nil != err {
+				return nil, err
+			}
+			defer fo.Close()
+		} else {
+			return nil, err
+		}
+		d.shareLinkMap = make(map[string]*types.ShareLinkCommand)
+		d.saveDb()
+	}else{
+		file, err := ioutil.ReadFile(d.shareLinkPath)
+    	if err != nil {
+    	    return nil, err
+    	}
+		err = json.Unmarshal(file, &d.shareLinkMap)
+		if nil != err {
+			return nil, err
+		}
 	}
 	return d, nil
 }
@@ -177,25 +204,7 @@ func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
 	}
 	d.Log(DEBUG, fmt.Sprintf("%s : %s", "Saved new Account", account))
 
-	serialized, err := json.Marshal(d.accounts[0:d.accountsId])
-	if nil != err {
-		d.Log(ERROR, "Couldn't serialize accounts list...")
-		return err
-	}
-
-	var fo *os.File
-	fo, err = os.OpenFile(d.accountsDBPath, os.O_WRONLY, os.ModePerm)
-	if nil != err {
-		return err
-	}
-	defer fo.Close()
-	nbWriten, err := fo.Write(serialized)
-	if nbWriten != len(serialized) {
-		d.Log(ERROR, "Couldn't write serialized object")
-		return errors.New("Couldn't write serialized object")
-	}
-
-	return nil
+	return d.saveDb()
 }
 func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.Account, err error) {
 	for _, elem := range d.accounts[0:d.accountsId] {
@@ -220,7 +229,7 @@ func (d *DummyDatabase) GetUserAccount(id string) (account *types.Account, err e
 	return nil, errors.New(message)
 }
 
-func (d *DummyDatabase)ListAccounts()(accounts []*types.Account, err error){
+func (d *DummyDatabase)ListAccounts(searchDict map[string]string)(accounts []*types.Account, err error){
 	return d.accounts[0:d.accountsId], nil
 }
 
@@ -237,8 +246,65 @@ func (d *DummyDatabase) GetSession(ref string)(session *types.Session, err error
 	return session, nil
 }
 
-
 func (d *DummyDatabase) RemoveSession(ref string)(err error){
 	delete (d.sessionMap, ref)
+	return nil
+}
+
+
+func (d *DummyDatabase) SaveShareLink(shareLink * types.ShareLinkCommand)(err error){
+	d.shareLinkMap[*shareLink.Key] = shareLink
+	return d.saveDb()
+}
+func (d *DummyDatabase) GetShareLink(key string) (shareLink * types.ShareLinkCommand, err error){
+	shareLink, found := d.shareLinkMap[key]
+	if !found{
+		message := fmt.Sprintf("Couldn't find share link %s", key)
+		d.Log(ERROR, message)
+		return nil, errors.New(message)
+	}
+	return shareLink, nil
+}
+func (d *DummyDatabase) RemoveShareLink(key string)(err error){
+	delete(d.shareLinkMap, key)
+	return d.saveDb()
+}
+
+func (d *DummyDatabase) saveDb() error{
+	serialized, err := json.Marshal(d.shareLinkMap)
+	if nil != err {
+		d.Log(ERROR, "Couldn't serialize share links...")
+		return err
+	}
+
+	var fo *os.File
+	fo, err = os.OpenFile(d.shareLinkPath, os.O_WRONLY, os.ModePerm)
+	if nil != err {
+		return err
+	}
+	defer fo.Close()
+	nbWriten, err := fo.Write(serialized)
+	if nbWriten != len(serialized) {
+		d.Log(ERROR, "Couldn't write serialized object")
+		return errors.New("Couldn't write serialized object")
+	}
+
+	serialized, err = json.Marshal(d.accounts[0:d.accountsId])
+	if nil != err {
+		d.Log(ERROR, "Couldn't serialize accounts list...")
+		return err
+	}
+
+	fo, err = os.OpenFile(d.accountsDBPath, os.O_WRONLY, os.ModePerm)
+	if nil != err {
+		return err
+	}
+	defer fo.Close()
+	nbWriten, err = fo.Write(serialized)
+	if nbWriten != len(serialized) {
+		d.Log(ERROR, "Couldn't write serialized object")
+		return errors.New("Couldn't write serialized object")
+	}
+
 	return nil
 }

@@ -17,7 +17,6 @@ type Authentication struct {
 	Config     *Configuration
 }
 
-
 func (auth *Authentication)GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) (user *string, err error){
 	//TODO KeyWord should be changed
 	authHeader := r.Header.Get("Authentication")
@@ -79,8 +78,8 @@ func (auth *Authentication)ListUsers(w http.ResponseWriter, r *http.Request){
 		http.Error(w, message, http.StatusUnauthorized)
 		return
 	}
-	accounts, err := auth.Config.Db.ListAccounts()
-	var tempResult []*Accounts
+	accounts, err := auth.Config.Db.ListAccounts(nil)
+	//var tempResult []*Account
 	b, _ := json.Marshal(accounts)
 	io.WriteString(w, string(b))
 }

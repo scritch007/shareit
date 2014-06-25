@@ -13,13 +13,16 @@ import (
 	"path/filepath"
 	//	"strconv"
 	"github.com/scritch007/shareit/types"
+	"github.com/scritch007/shareit/share_link"
 	"time"
+	"strings"
 )
 
 //ServeContent(w ResponseWriter, req *Request, name string, modtime time.Time, content io.ReadSeeker)
 //CommandHandler is used to keep information about issued commands
 type CommandHandler struct {
 	config *types.Configuration
+	shareLink *share_link.ShareLinkHandler
 }
 
 func (c *CommandHandler) save(command *types.Command) error {
@@ -30,34 +33,35 @@ func (c *CommandHandler) save(command *types.Command) error {
 func NewCommandHandler(config *types.Configuration) (c *CommandHandler) {
 	c = new(CommandHandler)
 	c.config = config
+	c.shareLink = share_link.NewShareLinkHandler(config)
 	return c
 }
 
 func (c *CommandHandler) downloadLink(command *types.Command, resp chan<- bool) {
-	if nil == command.GenerateDownloadLink {
+	if nil == command.Browser.GenerateDownloadLink {
 		types.LOG_DEBUG.Println("Missing input configuration")
 		command.State.ErrorCode = 1
 		resp <- false
 		return
 	}
-	file_path := path.Join(c.config.RootPrefix, command.GenerateDownloadLink.Path)
+	file_path := path.Join(c.config.RootPrefix, command.Browser.GenerateDownloadLink.Path)
 	result := ComputeHmac256(file_path, c.config.PrivateKey)
-	dLink := types.DownloadLink{Link: result, Path: command.GenerateDownloadLink.Path}
+	dLink := types.DownloadLink{Link: result, Path: command.Browser.GenerateDownloadLink.Path}
 	c.config.Db.AddDownloadLink(&dLink)
-	command.GenerateDownloadLink.Result.Link = url.QueryEscape(result)
-	command.GenerateDownloadLink.Result.Path = command.GenerateDownloadLink.Path
+	command.Browser.GenerateDownloadLink.Result.Link = url.QueryEscape(result)
+	command.Browser.GenerateDownloadLink.Result.Path = command.Browser.GenerateDownloadLink.Path
 	resp <- true
 }
 
 //Handle removal of an item
 func (c *CommandHandler) deleteItemCommand(command *types.Command, resp chan<- bool) {
-	if nil == command.Delete {
+	if nil == command.Browser.Delete {
 		types.LOG_DEBUG.Println("Missing input configuration")
 		command.State.ErrorCode = 1
 		resp <- false
 		return
 	}
-	item_path := path.Join(c.config.RootPrefix, command.Delete.Path)
+	item_path := path.Join(c.config.RootPrefix, command.Browser.Delete.Path)
 	types.LOG_DEBUG.Println("delete " + item_path)
 	fileInfo, err := os.Lstat(item_path)
 	if nil != err {
@@ -104,13 +108,13 @@ func (c *CommandHandler) deleteItemCommand(command *types.Command, resp chan<- b
 
 //Handle the creation of a folder
 func (c *CommandHandler) createFolderCommand(command *types.Command, resp chan<- bool) {
-	if nil == command.CreateFolder {
+	if nil == command.Browser.CreateFolder {
 		fmt.Println("Missing input configuration")
 		command.State.ErrorCode = 1
 		resp <- false
 		return
 	}
-	error := os.Mkdir(path.Join(c.config.RootPrefix, command.CreateFolder.Path), os.ModePerm)
+	error := os.Mkdir(path.Join(c.config.RootPrefix, command.Browser.CreateFolder.Path), os.ModePerm)
 	if nil != error {
 		resp <- false
 	} else {
@@ -120,13 +124,13 @@ func (c *CommandHandler) createFolderCommand(command *types.Command, resp chan<-
 
 //Handle the browsing of a folder
 func (c *CommandHandler) browseCommand(command *types.Command, resp chan<- bool) {
-	if nil == command.Browse {
+	if nil == command.Browser.List {
 		fmt.Println("Missing input configuration")
 		command.State.ErrorCode = 1
 		resp <- false
 		return
 	}
-	fileList, err := ioutil.ReadDir(path.Join(c.config.RootPrefix, command.Browse.Path))
+	fileList, err := ioutil.ReadDir(path.Join(c.config.RootPrefix, command.Browser.List.Path))
 	if nil != err {
 		fmt.Println("2 Failed with error code " + err.Error())
 		resp <- false
@@ -142,7 +146,7 @@ func (c *CommandHandler) browseCommand(command *types.Command, resp chan<- bool)
 		}
 		result[i] = s
 	}
-	command.Browse.Results = result
+	command.Browser.List.Results = result
 	time.Sleep(2)
 	resp <- true
 }
@@ -192,23 +196,36 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		//TODO do something in that case
 		return
 	}
-	if command.Name == types.EnumBrowserBrowse {
-		go c.browseCommand(command, channel)
-	} else if command.Name == types.EnumBrowserCreateFolder {
-		go c.createFolderCommand(command, channel)
-	} else if command.Name == types.EnumBrowserDeleteItem {
-		go c.deleteItemCommand(command, channel)
-
-	} else if command.Name == types.EnumBrowserDownloadLink {
-		go c.downloadLink(command, channel)
+	if strings.Contains(string(command.Name), "browser."){
+		fmt.Println("In Browser...")
+		if nil == command.Browser{
+			http.Error(w, "Missing browse command body", http.StatusBadRequest)
+			return
+		}
+		if command.Name == types.EnumBrowserBrowse {
+			go c.browseCommand(command, channel)
+		} else if command.Name == types.EnumBrowserCreateFolder {
+			go c.createFolderCommand(command, channel)
+		} else if command.Name == types.EnumBrowserDeleteItem {
+			go c.deleteItemCommand(command, channel)
+		} else if command.Name == types.EnumBrowserDownloadLink {
+			go c.downloadLink(command, channel)
+		}else{
+			http.Error(w, "Missing browse command body", http.StatusBadRequest)
+			return
+		}
+	}else if strings.Contains(string(command.Name), share_link.COMMAND_PREFIX){
+		go c.shareLink.Handle(command, channel)
 	} else {
+		http.Error(w, "Unknown Request Type", http.StatusBadRequest)
 		return
 	}
 	timeout := time.Duration(command.Timeout)
 	if 0 == timeout {
 		timeout = 10
 	}
-	timer := time.NewTimer(1 /*timeout * time.Second*/)
+	//timer := time.NewTimer(1)
+	timer := time.NewTimer(timeout * time.Second)
 
 	select {
 	case a := <-channel:
