@@ -9,7 +9,7 @@ import (
 )
 
 type configSubStruct struct {
-	Type   string          `json:"type"`
+	Type   string           `json:"type"`
 	Config *json.RawMessage `json:"config"`
 }
 
@@ -29,14 +29,12 @@ func NewAuthentication(config *json.RawMessage, r *mux.Router, globalConfig *typ
 			err = errors.New("Unknown authentication method " + elem.Type)
 			newAuth = nil
 		}
-		if nil != err{
+		if nil != err {
 			return nil, err
 		}
 		newSubAuth.AddRoutes(r)
 		newAuth.Auths[i] = newSubAuth
 	}
 
-
 	return newAuth, err
 }
-

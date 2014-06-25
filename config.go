@@ -13,18 +13,17 @@ import (
 	"path/filepath"
 )
 
-
 type configSubStruct struct {
-	Type   string          `json:"type"`
+	Type   string           `json:"type"`
 	Config *json.RawMessage `json:"config"`
 }
 type readConfiguration struct {
-	RootPrefix string            `json:"root_prefix"`
-	PrivateKey string            `json:"private_key"`
-	StaticPath string            `json:"static_path"`
-	WebPort    string            `json:"web_port"`
-	DbConfig   configSubStruct   `json:"database"`
-	AuthConfig *json.RawMessage  `json:"auth"`
+	RootPrefix string           `json:"root_prefix"`
+	PrivateKey string           `json:"private_key"`
+	StaticPath string           `json:"static_path"`
+	WebPort    string           `json:"web_port"`
+	DbConfig   configSubStruct  `json:"database"`
+	AuthConfig *json.RawMessage `json:"auth"`
 }
 
 func NewConfiguration(r *mux.Router) (resultConfig *types.Configuration) {
@@ -107,7 +106,7 @@ func NewConfiguration(r *mux.Router) (resultConfig *types.Configuration) {
 	}
 
 	resultConfig.Auth, err = auth.NewAuthentication(c.AuthConfig, r, resultConfig)
-	if nil != err{
+	if nil != err {
 		fmt.Println("Error: Error reading authentication configuration", err)
 	}
 	return resultConfig

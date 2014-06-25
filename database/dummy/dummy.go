@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/scritch007/shareit/types"
+	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
-	"io/ioutil"
 	//"github.com/scritch007/shareit/database"
 )
 
@@ -17,16 +17,16 @@ const (
 )
 
 type DummyDatabase struct {
-	DbFolder      string `json:"db_folder"`
-	commandsList  []*types.Command
-	commandIndex  int
-	downloadLinks map[string]*types.DownloadLink
-	accounts      []*types.Account
-	accountsId    int
+	DbFolder       string `json:"db_folder"`
+	commandsList   []*types.Command
+	commandIndex   int
+	downloadLinks  map[string]*types.DownloadLink
+	accounts       []*types.Account
+	accountsId     int
 	accountsDBPath string
-	sessionMap map[string]*types.Session
-	shareLinkMap map[string]*types.ShareLinkCommand
-	shareLinkPath string
+	sessionMap     map[string]*types.Session
+	shareLinkMap   map[string]*types.ShareLinkCommand
+	shareLinkPath  string
 }
 
 func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
@@ -62,11 +62,11 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 		d.accounts = make([]*types.Account, 10)
 		d.accountsId = 0
 		d.saveDb()
-	}else{
+	} else {
 		file, err := ioutil.ReadFile(d.accountsDBPath)
-    	if err != nil {
-    	    return nil, err
-    	}
+		if err != nil {
+			return nil, err
+		}
 		err = json.Unmarshal(file, &d.accounts)
 		if nil != err {
 			return nil, err
@@ -87,11 +87,11 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 		}
 		d.shareLinkMap = make(map[string]*types.ShareLinkCommand)
 		d.saveDb()
-	}else{
+	} else {
 		file, err := ioutil.ReadFile(d.shareLinkPath)
-    	if err != nil {
-    	    return nil, err
-    	}
+		if err != nil {
+			return nil, err
+		}
 		err = json.Unmarshal(file, &d.shareLinkMap)
 		if nil != err {
 			return nil, err
@@ -126,7 +126,7 @@ func (d *DummyDatabase) Log(level LogLevel, message string) {
 	}
 }
 func (d *DummyDatabase) SaveCommand(command *types.Command) (err error) {
-	if 0 == len(command.CommandId){
+	if 0 == len(command.CommandId) {
 		d.commandsList[d.commandIndex] = command
 		command.CommandId = strconv.Itoa(d.commandIndex)
 		d.commandIndex += 1
@@ -144,8 +144,8 @@ func (d *DummyDatabase) SaveCommand(command *types.Command) (err error) {
 func (d *DummyDatabase) ListCommands(user *string, offset int, limit int, search_parameters *types.CommandsSearchParameters) ([]*types.Command, int, error) {
 	tempResult := make([]*types.Command, d.commandIndex) // Maximum size this could have
 	nbResult := 0
-	for _, elem := range d.commandsList[0:d.commandIndex]{
-		if elem.User == user{
+	for _, elem := range d.commandsList[0:d.commandIndex] {
+		if elem.User == user {
 			tempResult[nbResult] = elem
 			nbResult += 1
 		}
@@ -220,7 +220,7 @@ func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.
 func (d *DummyDatabase) GetUserAccount(id string) (account *types.Account, err error) {
 	for _, elem := range d.accounts[0:d.accountsId] {
 		d.Log(DEBUG, fmt.Sprintf("Looking for %s comparing with %s", id, elem.Id))
-		if (id == elem.Id){
+		if id == elem.Id {
 			return elem, nil
 		}
 	}
@@ -229,48 +229,46 @@ func (d *DummyDatabase) GetUserAccount(id string) (account *types.Account, err e
 	return nil, errors.New(message)
 }
 
-func (d *DummyDatabase)ListAccounts(searchDict map[string]string)(accounts []*types.Account, err error){
+func (d *DummyDatabase) ListAccounts(searchDict map[string]string) (accounts []*types.Account, err error) {
 	return d.accounts[0:d.accountsId], nil
 }
 
-
-func (d *DummyDatabase) StoreSession(session *types.Session)(err error){
+func (d *DummyDatabase) StoreSession(session *types.Session) (err error) {
 	d.sessionMap[session.AuthenticationHeader] = session
 	return nil
 }
-func (d *DummyDatabase) GetSession(ref string)(session *types.Session, err error){
+func (d *DummyDatabase) GetSession(ref string) (session *types.Session, err error) {
 	session, found := d.sessionMap[ref]
-	if !found{
+	if !found {
 		return nil, errors.New("Couldn't find session")
 	}
 	return session, nil
 }
 
-func (d *DummyDatabase) RemoveSession(ref string)(err error){
-	delete (d.sessionMap, ref)
+func (d *DummyDatabase) RemoveSession(ref string) (err error) {
+	delete(d.sessionMap, ref)
 	return nil
 }
 
-
-func (d *DummyDatabase) SaveShareLink(shareLink * types.ShareLinkCommand)(err error){
+func (d *DummyDatabase) SaveShareLink(shareLink *types.ShareLinkCommand) (err error) {
 	d.shareLinkMap[*shareLink.Key] = shareLink
 	return d.saveDb()
 }
-func (d *DummyDatabase) GetShareLink(key string) (shareLink * types.ShareLinkCommand, err error){
+func (d *DummyDatabase) GetShareLink(key string) (shareLink *types.ShareLinkCommand, err error) {
 	shareLink, found := d.shareLinkMap[key]
-	if !found{
+	if !found {
 		message := fmt.Sprintf("Couldn't find share link %s", key)
 		d.Log(ERROR, message)
 		return nil, errors.New(message)
 	}
 	return shareLink, nil
 }
-func (d *DummyDatabase) RemoveShareLink(key string)(err error){
+func (d *DummyDatabase) RemoveShareLink(key string) (err error) {
 	delete(d.shareLinkMap, key)
 	return d.saveDb()
 }
 
-func (d *DummyDatabase) saveDb() error{
+func (d *DummyDatabase) saveDb() error {
 	serialized, err := json.Marshal(d.shareLinkMap)
 	if nil != err {
 		d.Log(ERROR, "Couldn't serialize share links...")

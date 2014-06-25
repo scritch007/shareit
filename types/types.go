@@ -9,7 +9,7 @@ import (
 type DatabaseInterface interface {
 	Name() string
 	ListCommands(user *string, offset int, limit int, search_parameters *CommandsSearchParameters) ([]*Command, int, error) //set limit to -1 for retrieving all the elements, search_parameters will be used to filter response
-	SaveCommand(command *Command)(err error)
+	SaveCommand(command *Command) (err error)
 	GetCommand(ref string) (command *Command, err error)
 	DeleteCommand(ref *string) (err error)
 	AddDownloadLink(link *DownloadLink) (err error)
@@ -18,17 +18,17 @@ type DatabaseInterface interface {
 	//We need to implement some authentication structures to
 	AddAccount(account *Account) (err error)
 	GetAccount(authType string, ref string) (account *Account, err error)
-	GetUserAccount(id string)(account *Account, err error)
-	ListAccounts(searchDict map[string]string)(accounts []*Account, err error)
+	GetUserAccount(id string) (account *Account, err error)
+	ListAccounts(searchDict map[string]string) (accounts []*Account, err error)
 
-	StoreSession(session *Session)(err error)
-	GetSession(ref string)(session *Session, err error)
-	RemoveSession(ref string)(err error)
+	StoreSession(session *Session) (err error)
+	GetSession(ref string) (session *Session, err error)
+	RemoveSession(ref string) (err error)
 
 	//ShareLink
-	SaveShareLink(shareLink * ShareLinkCommand)(err error)
-	GetShareLink(key string) (shareLink * ShareLinkCommand, err error)
-	RemoveShareLink(key string)(err error)
+	SaveShareLink(shareLink *ShareLinkCommand) (err error)
+	GetShareLink(key string) (shareLink *ShareLinkCommand, err error)
+	RemoveShareLink(key string) (err error)
 }
 
 type Account struct {
@@ -42,7 +42,7 @@ type Account struct {
 
 type Session struct {
 	AuthenticationHeader string
-	UserId string
+	UserId               string
 }
 
 //Configuration Structure
@@ -52,7 +52,7 @@ type Configuration struct {
 	StaticPath string
 	WebPort    string
 	Db         DatabaseInterface
-	Auth 	   *Authentication
+	Auth       *Authentication
 }
 
 type DownloadLink struct {
@@ -119,38 +119,38 @@ type BrowserCommandDownloadLink struct {
 	Result DownloadLink `json:"download_link"`
 }
 
-
 type EnumShareLinkType string
 
 const (
-	EnumShareByKey     EnumShareLinkType = "key" //EveryBody with the key can access to this sharelink
-	EnumRestricted     EnumShareLinkType = "restricted" // Shared to a limited number of users can access to this link
-	EnumAuthenticated  EnumShareLinkType = "authenticated" //Only the authenticated users with the key can access to this sharelink
+	EnumShareByKey    EnumShareLinkType = "key"           //EveryBody with the key can access to this sharelink
+	EnumRestricted    EnumShareLinkType = "restricted"    // Shared to a limited number of users can access to this link
+	EnumAuthenticated EnumShareLinkType = "authenticated" //Only the authenticated users with the key can access to this sharelink
 )
-type ShareLinkCommand struct{
-	Path 	*string `json:"path,omitempty"` //Can be empty only if ShareLinkKey is provided
-	Key *string `json:"key:omitempty` //Can be empty only for a creation
-	User    string `json:"user"` //This will only be set by server. This is the user that issued the share link
-	UserList *[]string `json:"user_list,omitempty"` //This is only available for EnumRestricted mode
-	Type    EnumShareLinkType `json:"type"`
+
+type ShareLinkCommand struct {
+	Path     *string           `json:"path,omitempty"`      //Can be empty only if ShareLinkKey is provided
+	Key      *string           `json:"key:omitempty`        //Can be empty only for a creation
+	User     string            `json:"user"`                //This will only be set by server. This is the user that issued the share link
+	UserList *[]string         `json:"user_list,omitempty"` //This is only available for EnumRestricted mode
+	Type     EnumShareLinkType `json:"type"`
 }
 
-type BrowserCommand struct{
-	List               	 *BrowserCommandList         `json:"list,omitempty"`
+type BrowserCommand struct {
+	List                 *BrowserCommandList         `json:"list,omitempty"`
 	Delete               *BrowserCommandDeleteItem   `json:"delete,omitempty"`
 	CreateFolder         *BrowserCommandCreateFolder `json:"create_folder,omitempty"`
 	GenerateDownloadLink *BrowserCommandDownloadLink `json:"download_link,omitempty"`
 }
 
 type Command struct {
-	Name                 EnumAction           `json:"name"`       // Name of action Requested
-	CommandId            string               `json:"command_id"` // Command Id returned by client when timeout is reached
-	State                CommandStatus        `json:"state"`
-	Timeout              int                  `json:"timeout"` // Result should be returned before timeout, or client will have to poll using CommandId
-	User 				 *string              `json:"user,omitempty"`//This is only used internally to know who is actually making the request
-	AuthKey              *string              `json:"auth_key,omitempty"` //Used when calling commands on behalf of a sharedlink
-	ShareLink            *ShareLinkCommand    `json:"share_link,omitempty"`
-	Browser               *BrowserCommand       `json:"browser,omitempty"`
+	Name      EnumAction        `json:"name"`       // Name of action Requested
+	CommandId string            `json:"command_id"` // Command Id returned by client when timeout is reached
+	State     CommandStatus     `json:"state"`
+	Timeout   int               `json:"timeout"`            // Result should be returned before timeout, or client will have to poll using CommandId
+	User      *string           `json:"user,omitempty"`     //This is only used internally to know who is actually making the request
+	AuthKey   *string           `json:"auth_key,omitempty"` //Used when calling commands on behalf of a sharedlink
+	ShareLink *ShareLinkCommand `json:"share_link,omitempty"`
+	Browser   *BrowserCommand   `json:"browser,omitempty"`
 }
 
 func (c *Command) String() string {

@@ -12,16 +12,16 @@ import (
 	"path"
 	"path/filepath"
 	//	"strconv"
-	"github.com/scritch007/shareit/types"
 	"github.com/scritch007/shareit/share_link"
-	"time"
+	"github.com/scritch007/shareit/types"
 	"strings"
+	"time"
 )
 
 //ServeContent(w ResponseWriter, req *Request, name string, modtime time.Time, content io.ReadSeeker)
 //CommandHandler is used to keep information about issued commands
 type CommandHandler struct {
-	config *types.Configuration
+	config    *types.Configuration
 	shareLink *share_link.ShareLinkHandler
 }
 
@@ -140,8 +140,8 @@ func (c *CommandHandler) browseCommand(command *types.Command, resp chan<- bool)
 		s := types.StorageItem{Name: file.Name(), IsDir: file.IsDir(), ModificationDate: file.ModTime().Unix()}
 		if !file.IsDir() {
 			s.Size = file.Size()
-			s.Kind = filepath.Ext(file.Name());
-		}else{
+			s.Kind = filepath.Ext(file.Name())
+		} else {
 			s.Kind = "folder"
 		}
 		result[i] = s
@@ -155,7 +155,7 @@ func (c *CommandHandler) browseCommand(command *types.Command, resp chan<- bool)
 //Only GET and POST request are available
 func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	user, err := c.config.Auth.GetAuthenticatedUser(w, r)
-	if nil != err{
+	if nil != err {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
@@ -196,9 +196,9 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		//TODO do something in that case
 		return
 	}
-	if strings.Contains(string(command.Name), "browser."){
+	if strings.Contains(string(command.Name), "browser.") {
 		fmt.Println("In Browser...")
-		if nil == command.Browser{
+		if nil == command.Browser {
 			http.Error(w, "Missing browse command body", http.StatusBadRequest)
 			return
 		}
@@ -210,11 +210,11 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 			go c.deleteItemCommand(command, channel)
 		} else if command.Name == types.EnumBrowserDownloadLink {
 			go c.downloadLink(command, channel)
-		}else{
+		} else {
 			http.Error(w, "Missing browse command body", http.StatusBadRequest)
 			return
 		}
-	}else if strings.Contains(string(command.Name), share_link.COMMAND_PREFIX){
+	} else if strings.Contains(string(command.Name), share_link.COMMAND_PREFIX) {
 		go c.shareLink.Handle(command, channel)
 	} else {
 		http.Error(w, "Unknown Request Type", http.StatusBadRequest)
@@ -240,7 +240,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		c.save(command)
 	case <-timer.C:
 		fmt.Println("Timer just elapsed")
-		go func(){
+		go func() {
 			//Wait for the command to end
 			a := <-channel
 			if a {
@@ -258,14 +258,14 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 
 func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 	user, err := c.config.Auth.GetAuthenticatedUser(w, r)
-	if nil != err{
+	if nil != err {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 	vars := mux.Vars(r)
 	ref := vars["command_id"]
 	command, err := c.config.Db.GetCommand(ref)
-	if command.User != user{
+	if command.User != user {
 		http.Error(w, "You are trying to access some resources that do not belong to you", http.StatusUnauthorized)
 	}
 	if nil != err {
