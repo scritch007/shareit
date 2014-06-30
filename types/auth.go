@@ -66,6 +66,11 @@ func (auth *Authentication) GetAvailableAuthentications() []string {
 	return res
 }
 
+type RespAccount struct {
+	DisplayName string `json:"name"`
+	Id          string `json:"id"`
+}
+
 func (auth *Authentication) ListUsers(w http.ResponseWriter, r *http.Request) {
 	user, err := auth.GetAuthenticatedUser(w, r)
 	if nil == user {
@@ -78,8 +83,19 @@ func (auth *Authentication) ListUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, http.StatusUnauthorized)
 		return
 	}
-	accounts, err := auth.Config.Db.ListAccounts(nil)
+	search := r.URL.Query().Get("search")
+	searchParameters := make(map[string]string)
+	if 0 != len(search) {
+		searchParameters["login"] = search
+		searchParameters["id"] = search
+	}
+	accounts, err := auth.Config.Db.ListAccounts(searchParameters)
+	resp := make([]RespAccount, len(accounts))
+	for i, account := range accounts {
+		resp[i].DisplayName = account.Login
+		resp[i].Id = account.Id
+	}
 	//var tempResult []*Account
-	b, _ := json.Marshal(accounts)
+	b, _ := json.Marshal(resp)
 	io.WriteString(w, string(b))
 }

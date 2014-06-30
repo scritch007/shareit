@@ -26,8 +26,10 @@ type DatabaseInterface interface {
 	RemoveSession(ref string) (err error)
 
 	//ShareLink
-	SaveShareLink(shareLink *ShareLinkCommand) (err error)
-	GetShareLink(key string) (shareLink *ShareLinkCommand, err error)
+	SaveShareLink(shareLink *ShareLink) (err error)
+	GetShareLink(key string) (shareLink *ShareLink, err error)
+	ListShareLinks(user string) (shareLinks []*ShareLink, err error) //List the sharelink user created
+	GetShareLinkFromPath(path string, user string) (shareLink *ShareLink, err error)
 	RemoveShareLink(key string) (err error)
 }
 
@@ -79,20 +81,41 @@ const (
 	COMMAND_STATUS_CANCELLED   EnumStatus = 4
 )
 
+type EnumCommandErrorCode int
+
+const (
+	ERROR_MISSING_COMMAND_BODY = iota + 1
+	ERROR_MISSING_PARAMETERS
+	ERROR_INVALID_PARAMETERS
+	ERROR_NOT_ALLOWED  //Should be set when accessing to things that user should be accessing to
+	ERROR_INVALID_PATH //Should be used for everything that refers to a filesystem path
+	ERROR_FILE_SYSTEM  //Should be used when an action on the file system fails (listing, removing, stat)
+	ERROR_SAVING       //Should only be raised to say saving failed...
+)
+
 //Defines current command status + error code and current Progress
 type CommandStatus struct {
-	Status    EnumStatus `json:"status"`
-	Progress  int        `json:"progress,omitempty"`
-	ErrorCode int        `json:"error_code,omitempty"`
+	Status    EnumStatus           `json:"status"`
+	Progress  int                  `json:"progress,omitempty"`
+	ErrorCode EnumCommandErrorCode `json:"error_code,omitempty"`
 }
+
+type AccessType int
+
+const (
+	READ       AccessType = iota + 1
+	WRITE      AccessType
+	READ_WRITE AccessType
+)
 
 //Element describing the an item
 type StorageItem struct {
-	Name             string `json:"name"`
-	IsDir            bool   `json:"isDir"`
-	ModificationDate int64  `json:"mDate"`
-	Size             int64  `json:"size"`
-	Kind             string `json:"kind"`
+	Name             string     `json:"name"`
+	IsDir            bool       `json:"isDir"`
+	ModificationDate int64      `json:"mDate"`
+	Size             int64      `json:"size"`
+	Kind             string     `json:"kind"`
+	Access           AccessType `json:"access"`
 }
 type CommandsSearchParameters struct {
 	Status *EnumStatus `json:"status,omitempty"`
@@ -127,12 +150,32 @@ const (
 	EnumAuthenticated EnumShareLinkType = "authenticated" //Only the authenticated users with the key can access to this sharelink
 )
 
-type ShareLinkCommand struct {
+type ShareLink struct {
 	Path     *string           `json:"path,omitempty"`      //Can be empty only if ShareLinkKey is provided
-	Key      *string           `json:"key:omitempty`        //Can be empty only for a creation
+	Key      *string           `json:"key,omitempty"`       //Can be empty only for a creation or on a Get
 	User     string            `json:"user"`                //This will only be set by server. This is the user that issued the share link
 	UserList *[]string         `json:"user_list,omitempty"` //This is only available for EnumRestricted mode
 	Type     EnumShareLinkType `json:"type"`
+}
+
+type ShareLinkCreate struct {
+	ShareLink ShareLink `json:"share_link"`
+}
+
+type ShareLinkUpdate struct {
+	ShareLink ShareLink `json:"share_link"`
+}
+
+type ShareLinkGet struct {
+	Path   string     `json:"path"`
+	Result *ShareLink `json:"result"`
+}
+
+type ShareLinkCommand struct {
+	Create *ShareLinkCreate `json:"create,omitempty"`
+	Update *ShareLinkUpdate `json:"update,omitempty"` //Key field needs to be provided
+	Delete *string          `json:"delete,omitempty"` //Just pass the key and we'll be find
+	Get    *ShareLinkGet    `json:"get,omitempty"`    //Get a ShareLink from a path. This will only return if users is owner
 }
 
 type BrowserCommand struct {
@@ -172,4 +215,5 @@ const (
 	EnumShareLinkCreate     EnumAction = "share_link.create"
 	EnumShareLinkUpdate     EnumAction = "share_link.update"
 	EnumShareLinkDelete     EnumAction = "share_link.delete"
+	EnumShareLinkGet        EnumAction = "share_link.get"
 )

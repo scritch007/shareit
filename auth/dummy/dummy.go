@@ -156,6 +156,7 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errMessage, http.StatusInternalServerError)
 			return
 		}
+		io.WriteString(w, fmt.Sprintf("{\"resp\":\"Welcome Mr %s\"}", account.Login))
 
 	case "validate":
 	case "get_challenge":

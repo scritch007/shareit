@@ -40,7 +40,7 @@ func NewCommandHandler(config *types.Configuration) (c *CommandHandler) {
 func (c *CommandHandler) downloadLink(command *types.Command, resp chan<- bool) {
 	if nil == command.Browser.GenerateDownloadLink {
 		types.LOG_DEBUG.Println("Missing input configuration")
-		command.State.ErrorCode = 1
+		command.State.ErrorCode = types.ERROR_MISSING_COMMAND_BODY
 		resp <- false
 		return
 	}
@@ -57,7 +57,7 @@ func (c *CommandHandler) downloadLink(command *types.Command, resp chan<- bool) 
 func (c *CommandHandler) deleteItemCommand(command *types.Command, resp chan<- bool) {
 	if nil == command.Browser.Delete {
 		types.LOG_DEBUG.Println("Missing input configuration")
-		command.State.ErrorCode = 1
+		command.State.ErrorCode = types.ERROR_MISSING_COMMAND_BODY
 		resp <- false
 		return
 	}
@@ -65,7 +65,7 @@ func (c *CommandHandler) deleteItemCommand(command *types.Command, resp chan<- b
 	types.LOG_DEBUG.Println("delete " + item_path)
 	fileInfo, err := os.Lstat(item_path)
 	if nil != err {
-		command.State.ErrorCode = 1 //TODO
+		command.State.ErrorCode = types.ERROR_INVALID_PATH
 		resp <- false
 		return
 	}
@@ -75,7 +75,7 @@ func (c *CommandHandler) deleteItemCommand(command *types.Command, resp chan<- b
 		fileList, err := ioutil.ReadDir(item_path)
 		if nil != err {
 			types.LOG_DEBUG.Println("Couldn't list directory")
-			command.State.ErrorCode = 1 //TODO
+			command.State.ErrorCode = types.ERROR_FILE_SYSTEM
 			resp <- false
 			return
 		}
@@ -87,7 +87,7 @@ func (c *CommandHandler) deleteItemCommand(command *types.Command, resp chan<- b
 			err = os.RemoveAll(element_path)
 			if nil != err {
 				success = false
-				command.State.ErrorCode = 1 //TODO
+				command.State.ErrorCode = types.ERROR_FILE_SYSTEM
 			}
 			command.State.Progress = i * 100 / nbElements
 		}
@@ -125,14 +125,28 @@ func (c *CommandHandler) createFolderCommand(command *types.Command, resp chan<-
 //Handle the browsing of a folder
 func (c *CommandHandler) browseCommand(command *types.Command, resp chan<- bool) {
 	if nil == command.Browser.List {
-		fmt.Println("Missing input configuration")
-		command.State.ErrorCode = 1
+		types.LOG_ERROR.Println("Missing input configuration")
+		command.State.ErrorCode = types.ERROR_MISSING_COMMAND_BODY
 		resp <- false
 		return
 	}
-	fileList, err := ioutil.ReadDir(path.Join(c.config.RootPrefix, command.Browser.List.Path))
+
+	//First check if we have a Key. If we do then we'll chroot the browse command...
+	chroot := ""
+	if nil != command.AuthKey {
+		share_link, err := c.config.Db.GetShareLink(*command.AuthKey)
+		if nil != err {
+			command.State.ErrorCode = types.ERROR_INVALID_PARAMETERS
+			resp <- false
+			return
+		}
+		chroot = *share_link.Path
+	}
+	realPath := path.Join(c.config.RootPrefix, chroot, command.Browser.List.Path)
+	types.LOG_DEBUG.Println("Browsing path ", realPath)
+	fileList, err := ioutil.ReadDir(realPath)
 	if nil != err {
-		fmt.Println("2 Failed with error code " + err.Error())
+		types.LOG_ERROR.Println("Failed to read path with error code " + err.Error())
 		resp <- false
 	}
 	var result = make([]types.StorageItem, len(fileList))
@@ -193,11 +207,11 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	command.State.Status = types.COMMAND_STATUS_IN_PROGRESS
 	err = c.save(command)
 	if nil != err {
-		//TODO do something in that case
+		http.Error(w, "Couldn't save this command", http.StatusInternalServerError)
 		return
 	}
 	if strings.Contains(string(command.Name), "browser.") {
-		fmt.Println("In Browser...")
+		types.LOG_DEBUG.Println("Browser command")
 		if nil == command.Browser {
 			http.Error(w, "Missing browse command body", http.StatusBadRequest)
 			return
@@ -215,6 +229,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else if strings.Contains(string(command.Name), share_link.COMMAND_PREFIX) {
+		types.LOG_DEBUG.Println("Share Link command")
 		go c.shareLink.Handle(command, channel)
 	} else {
 		http.Error(w, "Unknown Request Type", http.StatusBadRequest)

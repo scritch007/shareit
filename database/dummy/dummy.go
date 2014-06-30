@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	//"github.com/scritch007/shareit/database"
 )
 
@@ -25,7 +26,7 @@ type DummyDatabase struct {
 	accountsId     int
 	accountsDBPath string
 	sessionMap     map[string]*types.Session
-	shareLinkMap   map[string]*types.ShareLinkCommand
+	shareLinkMap   map[string]*types.ShareLink
 	shareLinkPath  string
 }
 
@@ -72,6 +73,10 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 			return nil, err
 		}
 		d.accountsId = len(d.accounts)
+		if 0 == d.accountsId {
+			//Special case we need to allocate some memory anyway
+			d.accounts = make([]*types.Account, 10)
+		}
 	}
 	d.shareLinkPath = path.Join(d.DbFolder, "share_links.json")
 	if _, err := os.Stat(d.shareLinkPath); err != nil {
@@ -85,7 +90,7 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 		} else {
 			return nil, err
 		}
-		d.shareLinkMap = make(map[string]*types.ShareLinkCommand)
+		d.shareLinkMap = make(map[string]*types.ShareLink)
 		d.saveDb()
 	} else {
 		file, err := ioutil.ReadFile(d.shareLinkPath)
@@ -191,10 +196,6 @@ func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
 		}
 	}
 
-	//Todo Check that no other account has the same (Id, authType)
-	d.accounts[d.accountsId] = account
-	account.Id = account.Email
-	d.accountsId += 1
 	if len(d.accounts) == d.accountsId {
 		new_list := make([]*types.Account, len(d.accounts)*2)
 		for i, comm := range d.accounts {
@@ -202,6 +203,11 @@ func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
 		}
 		d.accounts = new_list
 	}
+	//Todo Check that no other account has the same (Id, authType)
+	d.accounts[d.accountsId] = account
+	account.Id = account.Email
+	d.accountsId += 1
+
 	d.Log(DEBUG, fmt.Sprintf("%s : %s", "Saved new Account", account))
 
 	return d.saveDb()
@@ -230,7 +236,40 @@ func (d *DummyDatabase) GetUserAccount(id string) (account *types.Account, err e
 }
 
 func (d *DummyDatabase) ListAccounts(searchDict map[string]string) (accounts []*types.Account, err error) {
-	return d.accounts[0:d.accountsId], nil
+	if 0 == len(searchDict) {
+		d.Log(DEBUG, "No search parameters")
+		return d.accounts[0:d.accountsId], nil
+	}
+	d.Log(DEBUG, fmt.Sprintf("We had some search parameters ", searchDict))
+
+	accounts = make([]*types.Account, d.accountsId)
+
+	i := 0
+	for _, account := range d.accounts[0:d.accountsId] {
+		for k, v := range searchDict {
+			switch k {
+			case "login":
+				if strings.Contains(account.Login, v) {
+					accounts[i] = account
+					break
+				}
+			case "email":
+				if strings.Contains(account.Email, v) {
+
+					accounts[i] = account
+					i += 1
+					break
+				}
+			case "id":
+				if strings.Contains(account.Id, v) {
+					accounts[i] = account
+					i += 1
+					break
+				}
+			}
+		}
+	}
+	return accounts[0:i], nil
 }
 
 func (d *DummyDatabase) StoreSession(session *types.Session) (err error) {
@@ -250,11 +289,17 @@ func (d *DummyDatabase) RemoveSession(ref string) (err error) {
 	return nil
 }
 
-func (d *DummyDatabase) SaveShareLink(shareLink *types.ShareLinkCommand) (err error) {
+func (d *DummyDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
+	//TODO check if there is already a sharelink with this name and user
+	_, err = d.GetShareLinkFromPath(*shareLink.Path, shareLink.User)
+	if nil == err {
+		err = errors.New("Share link already exists")
+		return err
+	}
 	d.shareLinkMap[*shareLink.Key] = shareLink
 	return d.saveDb()
 }
-func (d *DummyDatabase) GetShareLink(key string) (shareLink *types.ShareLinkCommand, err error) {
+func (d *DummyDatabase) GetShareLink(key string) (shareLink *types.ShareLink, err error) {
 	shareLink, found := d.shareLinkMap[key]
 	if !found {
 		message := fmt.Sprintf("Couldn't find share link %s", key)
@@ -266,6 +311,32 @@ func (d *DummyDatabase) GetShareLink(key string) (shareLink *types.ShareLinkComm
 func (d *DummyDatabase) RemoveShareLink(key string) (err error) {
 	delete(d.shareLinkMap, key)
 	return d.saveDb()
+}
+func (d *DummyDatabase) ListShareLinks(user string) (shareLinks []*types.ShareLink, err error) {
+	shareLinks = make([]*types.ShareLink, 30)
+	currentId := 0
+	for _, shareLink := range d.shareLinkMap {
+		if shareLink.User == user {
+			shareLinks[currentId] = shareLink
+			currentId += 1
+			if currentId == len(shareLinks) {
+				new_list := make([]*types.ShareLink, len(shareLinks)*2)
+				for i, comm := range shareLinks {
+					new_list[i] = comm
+				}
+				shareLinks = new_list
+			}
+		}
+	}
+	return shareLinks, err
+}
+func (d *DummyDatabase) GetShareLinkFromPath(path string, user string) (shareLink *types.ShareLink, err error) {
+	for _, shareLink = range d.shareLinkMap {
+		if *shareLink.Path == path && shareLink.User == user {
+			return shareLink, nil
+		}
+	}
+	return nil, errors.New("Couldn't find shareLink")
 }
 
 func (d *DummyDatabase) saveDb() error {

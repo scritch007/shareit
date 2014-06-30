@@ -136,7 +136,7 @@ WualaDisplay.prototype.buildButtonDiv = function(element, displayName, 	onBrowse
 		downloadButton.onclick = function(path, event){
 			onDownloadCB(event);
 		}.bind(element, displayName);
-		buttonDiv.appendChild(document.createTextNode('\u00A0'));
+		downloadButton.appendChild(i);
 		buttonDiv.appendChild(downloadButton);
 	}
 
@@ -145,9 +145,12 @@ WualaDisplay.prototype.buildButtonDiv = function(element, displayName, 	onBrowse
 		shareButton.className = "button small w-open-sharing";
 		var i = document.createElement("i");
 		i.className = "icon-share-alt";
+		shareButton.appendChild(i);
 		shareButton.onclick = function(path, event){
+			event.stopPropagation();
 			onShareCB(event);
 		}.bind(element, displayName);
+		buttonDiv.appendChild(shareButton);
 	}
 	return buttonDiv;
 }
@@ -280,6 +283,12 @@ WualaDisplay.prototype.AddElement = function(list, element, displayName, onBrows
     // </td>
     //</tr>
     this.tbody.appendChild(mobtr);
+}
+
+WualaDisplay.prototype.AddEmptyList = function(list){
+	var tr = document.createElement("tr");
+	tr.innerHTML = "No files nor folder";
+	this.tbody.appendChild(tr);
 }
 
 WualaDisplay.prototype.GetListDisplayComponent = function(list){
