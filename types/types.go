@@ -103,9 +103,9 @@ type CommandStatus struct {
 type AccessType int
 
 const (
-	READ       AccessType = iota + 1
-	WRITE      AccessType
-	READ_WRITE AccessType
+	READ       AccessType = 1
+	WRITE      AccessType = 2
+	READ_WRITE AccessType = 3
 )
 
 //Element describing the an item

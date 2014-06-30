@@ -1,4 +1,4 @@
-package shareit
+package tools
 
 import (
 	"crypto/hmac"
