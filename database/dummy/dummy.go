@@ -42,9 +42,9 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 	//Prepare the folder
 	if _, err := os.Stat(d.DbFolder); err != nil {
 		if os.IsNotExist(err) {
-			fmt.Println("Error: the path %s, doesn't exist", d.DbFolder)
+			types.LOG_ERROR.Println("Error: the path %s, doesn't exist", d.DbFolder)
 		} else {
-			fmt.Println("Error: Something went wrong when accessing to %s, %v", d.DbFolder, err)
+			types.LOG_ERROR.Println("Error: Something went wrong when accessing to %s, %v", d.DbFolder, err)
 		}
 		return nil, err
 	}

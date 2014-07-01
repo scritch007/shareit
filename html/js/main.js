@@ -25,7 +25,7 @@ function init(){
 	queryString = getQueryString();
 	displayTheme = new WualaDisplay();
 	mainWindow = document.getElementById("window_popup_id");
-	$.getJSON("/auths", function(result){
+	$.getJSON("auths", function(result){
 		HandleAuthsResult(result);
 		checkAuth(function(loggedUser){
 			if (null != loggedUser){
@@ -111,7 +111,7 @@ function display(result, add_share_callback){
 				event.stopPropagation()
 				sendRequest(
 					{
-						url: "/commands",
+						url: "commands",
 						method: "POST",
 						data: {
 							name: "browser.download_link",
@@ -200,7 +200,7 @@ function createFolder(){
 		}
 		sendRequest(
 			{
-				url: "/commands",
+				url: "commands",
 				method: "POST",
 				data: {
 					name: "browser.create_folder",
@@ -354,7 +354,7 @@ function sharePopup(element, result){
 			function(){
 				sendRequest(
 					{
-						url:"/auths/list_users?search=" + searchUsersInput.value,
+						url:"auths/list_users?search=" + searchUsersInput.value,
 						method:"GET",
 						onSuccess: function(result){
 							searchUsersResponse.innerHTML = "";
@@ -472,7 +472,7 @@ function deletePopup(path){
 	ok_button.onclick = function(){
 		sendRequest(
 			{
-				url: "/commands",
+				url: "commands",
 				method: "POST",
 				data: {
 					name: "browser.delete_item",

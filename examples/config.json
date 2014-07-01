@@ -1,5 +1,6 @@
 {
 	"root_prefix": "/home/benjamin/tmp",
+	//"html_prefix": "/apps/shareit",
 	"private_key": "SomeSecretKeyThatOneShouldDefine",
 	"static_path": "./html",
 	"web_port": "8080",

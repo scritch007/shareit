@@ -124,7 +124,7 @@ function signup(){
 		goButton.style.disabled = true;
 		cancelButton.style.disabled = true;
 		sendRequest({
-				url:"/auths/DummyAuth/create",
+				url:"auths/DummyAuth/create",
 				method:"POST",
 				data: {
 					"login": loginInput.value,
@@ -185,13 +185,13 @@ function login(){
 		//Get the challenge
 		sendRequest(
 			{
-				url:"/auths/DummyAuth/get_challenge",
+				url:"auths/DummyAuth/get_challenge",
 				method:"GET",
 				onSuccess: function(result){
 					//TODO at one point we should hash the challenge but never mind for now :)
 					sendRequest(
 						{
-							url: "/auths/DummyAuth/auth",
+							url: "auths/DummyAuth/auth",
 							method: "POST",
 							data: {
 								"login": loginInput.value,
@@ -258,7 +258,7 @@ function sendRequest(obj){
 }
 
 function sendCommand(request){
-	request.url = "/commands";
+	request.url = "commands";
 	request.method = "POST";
 	if (undefined != request.poll && request.poll){
 		var tempOnSuccess = request.onSuccess;
@@ -266,7 +266,7 @@ function sendCommand(request){
 			if (2 == result.state.status){
 				window.setTimeout(function(){
 					sendRequest({
-						url:"/commands/" + this.command_id,
+						url:"commands/" + this.command_id,
 						method:"GET",
 						onSuccess: tempOnSuccess
 					});

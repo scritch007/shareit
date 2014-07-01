@@ -116,7 +116,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case a := <-channel:
-		fmt.Println("Got answer from command")
+		types.LOG_DEBUG.Println("Got answer from command")
 		timer.Stop()
 		if a {
 			command.State.Status = types.COMMAND_STATUS_DONE
@@ -126,7 +126,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		command.State.Progress = 100
 		c.save(command)
 	case <-timer.C:
-		fmt.Println("Timer just elapsed")
+		types.LOG_DEBUG.Println("Timer just elapsed")
 		go func() {
 			//Wait for the command to end
 			a := <-channel

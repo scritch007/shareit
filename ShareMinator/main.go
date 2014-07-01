@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/scritch007/shareit"
 	"github.com/scritch007/shareit/types"
@@ -35,12 +34,10 @@ func (m *Main) serveFile(w http.ResponseWriter, r *http.Request, folder string) 
 }
 
 func (m *Main) homeHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Got home request")
 	http.ServeFile(w, r, path.Join(m.path, "index.html"))
 }
 
 func (m *Main) authsHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Requested the available auths")
 	b, _ := json.Marshal(m.config.Auth.GetAvailableAuthentications())
 	io.WriteString(w, string(b))
 }
@@ -53,22 +50,25 @@ func main() {
 	m := NewMain(config)
 
 	c := shareit.NewCommandHandler(config)
+	temp := path.Join(config.HtmlPrefix, "/")
+	if "/" != string(temp[len(temp)-1]) {
+		temp += "/"
+	}
+	r.HandleFunc(temp, m.homeHandler)
+	r.HandleFunc(path.Join(temp, "commands"), c.Commands).Methods("GET", "POST")
+	r.HandleFunc(path.Join(temp, "commands/{command_id}"), c.Command).Methods("GET", "PUT", "DELETE")
+	r.HandleFunc(path.Join(temp, "downloads/{file:.*}"), c.Download).Methods("GET")
+	r.HandleFunc(path.Join(temp, "auths"), m.authsHandler).Methods("GET")
+	r.HandleFunc(path.Join(temp, "auths/logout"), config.Auth.LogOut).Methods("GET")
+	r.HandleFunc(path.Join(temp, "auths/list_users"), config.Auth.ListUsers).Methods("GET")
+	r.HandleFunc(path.Join(temp, "js/{file:.*}"), m.serveJSFile)
+	r.HandleFunc(path.Join(temp, "css/{file:.*}"), m.serveCSSFile)
+	r.HandleFunc(path.Join(temp, "img/{file:.*}"), m.serveIMGFile)
+	r.HandleFunc(path.Join(temp, "fonts/{file:.*}"), m.serveFontsFile)
 
-	r.HandleFunc("/", m.homeHandler)
-	r.HandleFunc("/commands", c.Commands).Methods("GET", "POST")
-	r.HandleFunc("/commands/{command_id}", c.Command).Methods("GET", "PUT", "DELETE")
-	r.HandleFunc("/downloads/{file:.*}", c.Download).Methods("GET")
-	r.HandleFunc("/auths", m.authsHandler).Methods("GET")
-	r.HandleFunc("/auths/logout", config.Auth.LogOut).Methods("GET")
-	r.HandleFunc("/auths/list_users", config.Auth.ListUsers).Methods("GET")
-	r.HandleFunc("/js/{file:.*}", m.serveJSFile)
-	r.HandleFunc("/css/{file:.*}", m.serveCSSFile)
-	r.HandleFunc("/img/{file:.*}", m.serveIMGFile)
-	r.HandleFunc("/fonts/{file:.*}", m.serveFontsFile)
+	http.Handle(temp, r)
 
-	http.Handle("/", r)
-
-	fmt.Println("Starting server on port " + m.port)
+	types.LOG_INFO.Println("Starting server on port " + m.port)
 	http.ListenAndServe(":"+m.port, nil)
 }
 

@@ -1,4 +1,3 @@
-//shareit package aims at browsing files and sharing them with others
 package types
 
 import (
@@ -52,6 +51,7 @@ type Configuration struct {
 	RootPrefix string
 	PrivateKey string
 	StaticPath string
+	HtmlPrefix string
 	WebPort    string
 	Db         DatabaseInterface
 	Auth       *Authentication

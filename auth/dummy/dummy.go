@@ -74,7 +74,7 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 	//method auth, create, validate
 	input, err := ioutil.ReadAll(r.Body)
 	if nil != err {
-		fmt.Println("1 Failed with error code " + err.Error())
+		types.LOG_ERROR.Println("1 Failed with error code " + err.Error())
 		return
 	}
 
