@@ -19,11 +19,4 @@ TODO
 * Add upload system
 
 
-
-icons set :
-
-http://dakirby309.deviantart.com/art/Metro-UI-Icon-Set-725-Icons-280724102
-
-CSS Metro like:
-
-http://metroui.org.ua/
+<a href="https://godoc.org/github.com/scritch007/shareit"><img src="https://godoc.org/github.com/scritch007/shareit?status.png" alt="GoDoc"></a>
