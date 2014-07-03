@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -42,7 +43,7 @@ func (d *DummyAuth) Name() string {
 	return Name
 }
 func (d *DummyAuth) AddRoutes(r *mux.Router) error {
-	r.HandleFunc("/auths/"+Name+"/{method}", d.Handle).Methods("POST", "GET")
+	r.HandleFunc(path.Join(d.config.HtmlPrefix, "/auths/", Name, "/{method}"), d.Handle).Methods("POST", "GET")
 	return nil
 }
 
@@ -117,8 +118,9 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Incorrect Challenge Hash", http.StatusUnauthorized)
 			return
 		}
-		if account.Blob != splittedElements[1] {
-			types.LOG_ERROR.Println("Incorrect Password ", splittedElements[1], " received, expecting :", account.Blob)
+		authSpecific := account.Auths[Name]
+		if authSpecific.Blob != splittedElements[1] {
+			types.LOG_ERROR.Println("Incorrect Password ", splittedElements[1], " received, expecting :", authSpecific.Blob)
 			http.Error(w, "Incorrect Password", http.StatusUnauthorized)
 			return
 		}
@@ -144,11 +146,12 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		account := new(types.Account)
+		account.Auths = make(map[string]types.AccountSpecificAuth)
 		account.Login = create.Login
 		account.Email = create.Email
-		account.AuthType = Name
+		authSpecific := types.AccountSpecificAuth{AuthType: Name, Blob: create.Password}
+		account.Auths[Name] = authSpecific
 		//TODO This should be the sha1 from the password
-		account.Blob = create.Password
 		err = auth.config.Db.AddAccount(account)
 		if nil != err {
 			errMessage := fmt.Sprintf("Couldn't save this account with error %s", err)

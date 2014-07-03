@@ -505,15 +505,68 @@ function deletePopup(path){
 	window_div.appendChild(content_div);
 	return window_div;
 }
-/*
-$.ajax({
-    beforeSend: function(xhr) {
-        xhr.setRequestHeader('X-HTTP-Method-Override', 'PUT');
-    },
-    type: 'POST',
-    url: '/someurl',
-    success: function(data){
-        // do something...
-    }
-});
-*/
+function uploadFile(){
+	//Create a popup div to enter the name of the folder to create
+	var uploadFilePopup = document.createElement("div");
+	uploadFilePopup.className = "window shadow";
+
+	var caption_div = Caption("uploadFile");
+	uploadFilePopup.appendChild(caption_div);
+	var folderNameLabel = document.createElement("label");
+	folderNameLabel.innerHTML = "Folder Name";
+	var folderNameInput = document.createElement("input");
+	folderNameInput.type = "file";
+	folderNameInput.id = "files";
+	folderNameInput.name = "file";
+	var nameDiv = document.createElement("div");
+	nameDiv.appendChild(folderNameLabel);
+	nameDiv.appendChild(folderNameInput);
+	uploadFilePopup.appendChild(nameDiv);
+
+	var buttonDiv = document.createElement("div");
+	buttonDiv.className = "footer";
+	var cancelButton = document.createElement("a");
+	cancelButton.type = "button small";
+	cancelButton.innerHTML = "Cancel";
+	cancelButton.className = "button small";
+	cancelButton.onclick = function(){
+		uploadFilePopup.parentNode.removeChild(uploadFilePopup);
+	}
+	buttonDiv.appendChild(cancelButton);
+	var goButton = document.createElement("a");
+	goButton.innerHTML = "Create";
+	goButton.onclick = function(){
+		goButton.disabled = true;
+		cancelButton.disabled = true;
+		path = current_folder;
+		if ("/" != path.charAt(path.length - 1)){
+			path = path + "/";
+		}
+		sendRequest(
+			{
+				url: "commands",
+				method: "POST",
+				data: {
+					name: "browser.create_folder",
+					browser:{
+						create_folder:{
+							"path": path + folderNameInput.value
+						}
+					}
+				},
+				onSuccess: function(result){
+					browse(current_folder);
+					uploadFilePopup.parentNode.removeChild(uploadFilePopup);
+				}
+			}
+		);
+	}
+	goButton.className = "button small";
+	buttonDiv.appendChild(goButton);
+	uploadFilePopup.appendChild(buttonDiv);
+	setPopup(uploadFilePopup);
+	folderNameInput.focus();
+	startReader(function(){console.log("Started Loading")}, function(evt){
+		console.log("Done");
+	})
+}

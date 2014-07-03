@@ -37,6 +37,16 @@ func NewCommandHandler(config *types.Configuration) (c *CommandHandler) {
 	return c
 }
 
+func (c *CommandHandler) getHandler(command *types.Command) types.CommandHandler {
+	if strings.Contains(string(command.Name), "browser.") {
+		return c.browser
+	} else if strings.Contains(string(command.Name), share_link.COMMAND_PREFIX) {
+		return c.shareLink
+	} else {
+		return nil
+	}
+}
+
 //Handle Request on /commands
 //Only GET and POST request are available
 func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +83,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	if nil != err {
 		//TODO Set erro Code
 	}
-	channel := make(chan bool)
+	channel := make(chan types.EnumCommandHandlerStatus)
 	command.State.Progress = 0
 	command.State.ErrorCode = 0
 	command.State.Status = types.COMMAND_STATUS_IN_PROGRESS
@@ -82,29 +92,15 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Couldn't save this command", http.StatusInternalServerError)
 		return
 	}
-	if strings.Contains(string(command.Name), "browser.") {
-		types.LOG_DEBUG.Println("Browser command")
-		if nil == command.Browser {
-			http.Error(w, "Missing browse command body", http.StatusBadRequest)
-			return
-		}
-		if command.Name == types.EnumBrowserBrowse {
-			go c.browser.BrowseCommand(command, channel)
-		} else if command.Name == types.EnumBrowserCreateFolder {
-			go c.browser.CreateFolderCommand(command, channel)
-		} else if command.Name == types.EnumBrowserDeleteItem {
-			go c.browser.DeleteItemCommand(command, channel)
-		} else if command.Name == types.EnumBrowserDownloadLink {
-			go c.browser.DownloadLink(command, channel)
-		} else {
-			http.Error(w, "Missing browse command body", http.StatusBadRequest)
-			return
-		}
-	} else if strings.Contains(string(command.Name), share_link.COMMAND_PREFIX) {
-		types.LOG_DEBUG.Println("Share Link command")
-		go c.shareLink.Handle(command, channel)
-	} else {
+
+	handler := c.getHandler(command)
+	if nil == handler {
 		http.Error(w, "Unknown Request Type", http.StatusBadRequest)
+	}
+	err, status := handler.Handle(command, channel)
+
+	if nil != err {
+		http.Error(w, err.Error(), status)
 		return
 	}
 	timeout := time.Duration(command.Timeout)
@@ -118,24 +114,26 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	case a := <-channel:
 		types.LOG_DEBUG.Println("Got answer from command")
 		timer.Stop()
-		if a {
+		if types.EnumCommandHandlerDone == a {
 			command.State.Status = types.COMMAND_STATUS_DONE
-		} else {
+			command.State.Progress = 100
+		} else if types.EnumCommandHandlerError == a {
 			command.State.Status = types.COMMAND_STATUS_ERROR
+			command.State.Progress = 100
 		}
-		command.State.Progress = 100
 		c.save(command)
 	case <-timer.C:
 		types.LOG_DEBUG.Println("Timer just elapsed")
 		go func() {
 			//Wait for the command to end
 			a := <-channel
-			if a {
+			if types.EnumCommandHandlerDone == a {
 				command.State.Status = types.COMMAND_STATUS_DONE
-			} else {
+				command.State.Progress = 100
+			} else if types.EnumCommandHandlerError == a {
 				command.State.Status = types.COMMAND_STATUS_ERROR
+				command.State.Progress = 100
 			}
-			command.State.Progress = 100
 			c.save(command)
 		}()
 	}
@@ -158,8 +156,10 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 	if nil != err {
 		return
 	}
-	b, _ := json.Marshal(command)
-	io.WriteString(w, string(b))
+	if "GET" == r.Method {
+		b, _ := json.Marshal(command)
+		io.WriteString(w, string(b))
+	}
 }
 
 func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {

@@ -42,6 +42,12 @@ func (m *Main) authsHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, string(b))
 }
 
+func (m *Main) serveHTMLFile(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	file := vars["file"]
+	http.ServeFile(w, r, path.Join(m.path, "html", file+".html"))
+}
+
 func main() {
 	types.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
 	r := mux.NewRouter()
@@ -50,23 +56,21 @@ func main() {
 	m := NewMain(config)
 
 	c := shareit.NewCommandHandler(config)
-	temp := path.Join(config.HtmlPrefix, "/")
-	if "/" != string(temp[len(temp)-1]) {
-		temp += "/"
-	}
-	r.HandleFunc(temp, m.homeHandler)
-	r.HandleFunc(path.Join(temp, "commands"), c.Commands).Methods("GET", "POST")
-	r.HandleFunc(path.Join(temp, "commands/{command_id}"), c.Command).Methods("GET", "PUT", "DELETE")
-	r.HandleFunc(path.Join(temp, "downloads/{file:.*}"), c.Download).Methods("GET")
-	r.HandleFunc(path.Join(temp, "auths"), m.authsHandler).Methods("GET")
-	r.HandleFunc(path.Join(temp, "auths/logout"), config.Auth.LogOut).Methods("GET")
-	r.HandleFunc(path.Join(temp, "auths/list_users"), config.Auth.ListUsers).Methods("GET")
-	r.HandleFunc(path.Join(temp, "js/{file:.*}"), m.serveJSFile)
-	r.HandleFunc(path.Join(temp, "css/{file:.*}"), m.serveCSSFile)
-	r.HandleFunc(path.Join(temp, "img/{file:.*}"), m.serveIMGFile)
-	r.HandleFunc(path.Join(temp, "fonts/{file:.*}"), m.serveFontsFile)
 
-	http.Handle(temp, r)
+	r.HandleFunc(config.HtmlPrefix, m.homeHandler)
+	r.HandleFunc(path.Join(config.HtmlPrefix, "commands"), c.Commands).Methods("GET", "POST")
+	r.HandleFunc(path.Join(config.HtmlPrefix, "commands/{command_id}"), c.Command).Methods("GET", "PUT", "DELETE", "POST")
+	r.HandleFunc(path.Join(config.HtmlPrefix, "downloads/{file:.*}"), c.Download).Methods("GET")
+	r.HandleFunc(path.Join(config.HtmlPrefix, "auths"), m.authsHandler).Methods("GET")
+	r.HandleFunc(path.Join(config.HtmlPrefix, "auths/logout"), config.Auth.LogOut).Methods("GET")
+	r.HandleFunc(path.Join(config.HtmlPrefix, "auths/list_users"), config.Auth.ListUsers).Methods("GET")
+	r.HandleFunc(path.Join(config.HtmlPrefix, "js/{file:.*}"), m.serveJSFile)
+	r.HandleFunc(path.Join(config.HtmlPrefix, "css/{file:.*}"), m.serveCSSFile)
+	r.HandleFunc(path.Join(config.HtmlPrefix, "img/{file:.*}"), m.serveIMGFile)
+	r.HandleFunc(path.Join(config.HtmlPrefix, "fonts/{file:.*}"), m.serveFontsFile)
+	r.HandleFunc(path.Join(config.HtmlPrefix, "{file}.html"), m.serveHTMLFile)
+
+	http.Handle(config.HtmlPrefix, r)
 
 	types.LOG_INFO.Println("Starting server on port " + m.port)
 	http.ListenAndServe(":"+m.port, nil)

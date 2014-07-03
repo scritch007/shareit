@@ -32,13 +32,16 @@ type DatabaseInterface interface {
 	RemoveShareLink(key string) (err error)
 }
 
-type Account struct {
-	Login    string `json:"login"`
-	Email    string `json:"email"`
+type AccountSpecificAuth struct {
 	AuthType string `json:"auth_type"`
-	Id       string `json:"id"` //This id should be unique depending on the DbType
 	Blob     string `json:"specific"`
+}
+type Account struct {
+	Login string `json:"login"`
+	Email string `json:"email"`
+	Id    string `json:"id"` //This id should be unique depending on the DbType
 	//Add some other infos here for all the specific stuffs
+	Auths map[string]AccountSpecificAuth
 }
 
 type Session struct {
@@ -142,6 +145,11 @@ type BrowserCommandDownloadLink struct {
 	Result DownloadLink `json:"download_link"`
 }
 
+type BrowserUploadFile struct {
+	Path string `json:"path"` //Path of the file it will be uploaded to
+	Size int64  `json:"size"` //Size of the file. This will be used for computing the progress
+}
+
 type EnumShareLinkType string
 
 const (
@@ -183,6 +191,7 @@ type BrowserCommand struct {
 	Delete               *BrowserCommandDeleteItem   `json:"delete,omitempty"`
 	CreateFolder         *BrowserCommandCreateFolder `json:"create_folder,omitempty"`
 	GenerateDownloadLink *BrowserCommandDownloadLink `json:"download_link,omitempty"`
+	UploadFile           *BrowserUploadFile          `json:"upload_file,omitempty"`
 }
 
 type Command struct {
@@ -204,6 +213,19 @@ func (c *Command) String() string {
 	return string(b)
 }
 
+type EnumCommandHandlerStatus int
+
+const (
+	EnumCommandHandlerError     EnumCommandHandlerStatus = 0
+	EnumCommandHandlerDone      EnumCommandHandlerStatus = 1
+	EnumCommandHandlerPostponed EnumCommandHandlerStatus = 2
+)
+
+type CommandHandler interface {
+	Handle(command *Command, resp chan<- EnumCommandHandlerStatus) (error, int) // int is for the http status code. Discard if error is nil
+	GetUploadPath(command *Command) (*string, error, int)                       // int is for the http status code. Discard if error is nil
+}
+
 type EnumAction string
 
 const (
@@ -211,6 +233,7 @@ const (
 	EnumBrowserCreateFolder EnumAction = "browser.create_folder"
 	EnumBrowserDeleteItem   EnumAction = "browser.delete_item"
 	EnumBrowserDownloadLink EnumAction = "browser.download_link"
+	EnumBrowserUploadFile   EnumAction = "browser.upload_file"
 	EnumDebugLongRequest    EnumAction = "debug.long_request"
 	EnumShareLinkCreate     EnumAction = "share_link.create"
 	EnumShareLinkUpdate     EnumAction = "share_link.update"

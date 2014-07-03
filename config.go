@@ -11,6 +11,7 @@ import (
 	"github.com/scritch007/shareit/types"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -99,7 +100,13 @@ func NewConfiguration(r *mux.Router) (resultConfig *types.Configuration) {
 	resultConfig.PrivateKey = c.PrivateKey
 	resultConfig.StaticPath = staticPath
 	resultConfig.WebPort = c.WebPort
-	resultConfig.HtmlPrefix = c.HtmlPrefix
+
+	temp := path.Join(c.HtmlPrefix, "/")
+	if "/" != string(temp[len(temp)-1]) {
+		temp += "/"
+	}
+
+	resultConfig.HtmlPrefix = temp
 	//Now Start the Auth and DB configurations...
 
 	resultConfig.Db, err = database.NewDatabase(c.DbConfig.Type, c.DbConfig.Config)

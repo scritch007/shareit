@@ -214,8 +214,13 @@ func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
 }
 func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.Account, err error) {
 	for _, elem := range d.accounts[0:d.accountsId] {
-		d.Log(DEBUG, fmt.Sprintf("Looking for %s:%s comparing with %s:%s||%s", authType, ref, elem.AuthType, elem.Email, elem.Login))
-		if (authType == elem.AuthType) && ((ref == elem.Email) || (ref == elem.Login)) {
+		if (ref == elem.Email) || (ref == elem.Login) {
+			_, found := elem.Auths[authType]
+			if !found {
+				message := fmt.Sprintf("Couldn't find this kind of authentication %s for %s", authType, ref)
+				d.Log(ERROR, message)
+				return nil, errors.New(message)
+			}
 			return elem, nil
 		}
 	}
