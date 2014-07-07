@@ -17,7 +17,7 @@ type Authentication struct {
 	Config *Configuration
 }
 
-func (auth *Authentication) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) (user *string, err error) {
+func (auth *Authentication) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) (user *Account, err error) {
 	//TODO KeyWord should be changed
 	authHeader := r.Header.Get("Authentication")
 	user = nil
@@ -37,8 +37,7 @@ func (auth *Authentication) GetAuthenticatedUser(w http.ResponseWriter, r *http.
 	if nil != err {
 		return nil, err
 	}
-	user = &userAccount.Id
-	return user, err
+	return userAccount, err
 
 }
 

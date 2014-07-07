@@ -22,7 +22,8 @@ func NewShareLinkHandler(config *types.Configuration) (s *ShareLinkHandler) {
 	return s
 }
 
-func (s *ShareLinkHandler) create(command *types.Command, resp chan<- types.EnumCommandHandlerStatus) {
+func (s *ShareLinkHandler) create(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
+	command := context.Command
 	if nil == command.ShareLink.Create {
 		types.LOG_DEBUG.Println("Missing input configuration")
 		command.State.ErrorCode = types.ERROR_MISSING_COMMAND_BODY
@@ -66,7 +67,8 @@ func (s *ShareLinkHandler) create(command *types.Command, resp chan<- types.Enum
 	resp <- types.EnumCommandHandlerDone
 }
 
-func (s *ShareLinkHandler) get(command *types.Command, resp chan<- types.EnumCommandHandlerStatus) {
+func (s *ShareLinkHandler) get(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
+	command := context.Command
 	shareLink, err := s.config.Db.GetShareLinkFromPath(command.ShareLink.Get.Path, *command.User)
 	if nil != err {
 		resp <- types.EnumCommandHandlerError
@@ -75,25 +77,26 @@ func (s *ShareLinkHandler) get(command *types.Command, resp chan<- types.EnumCom
 	resp <- types.EnumCommandHandlerDone
 }
 
-func (s *ShareLinkHandler) Handle(command *types.Command, resp chan<- types.EnumCommandHandlerStatus) (error, int) {
+func (s *ShareLinkHandler) Handle(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) *types.HttpError {
+	command := context.Command
 	if nil == command.User {
 		//only users can play with the share links
-		return errors.New("Method requires"), http.StatusUnauthorized
+		return &types.HttpError{errors.New("Method requires"), http.StatusUnauthorized}
 	}
 	if command.Name == types.EnumShareLinkCreate {
-		go s.create(command, resp)
+		go s.create(context, resp)
 	} else if command.Name == types.EnumShareLinkUpdate {
 
 	} else if command.Name == types.EnumShareLinkDelete {
 
 	} else if command.Name == types.EnumShareLinkGet {
-		go s.get(command, resp)
+		go s.get(context, resp)
 	} else {
-		return errors.New("Unknown share_link command"), http.StatusBadRequest
+		return &types.HttpError{errors.New("Unknown share_link command"), http.StatusBadRequest}
 	}
-	return nil, 0
+	return nil
 }
 
-func (s *ShareLinkHandler) GetUploadPath(command *types.Command) (*string, error, int) {
-	return nil, errors.New("Not Allowed"), http.StatusBadRequest
+func (s *ShareLinkHandler) GetUploadPath(context *types.CommandContext) (*string, int64, *types.HttpError) {
+	return nil, 0, &types.HttpError{errors.New("Not Allowed"), http.StatusBadRequest}
 }

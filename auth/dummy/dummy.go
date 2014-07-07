@@ -67,6 +67,7 @@ type Auth struct {
 
 type AuthResult struct {
 	AuthenticationHeader string `json:"authentication_header"`
+	IsAdmin string `json:"is_admin"`
 }
 
 func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +95,7 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Wrong command Input", http.StatusBadRequest)
 			return
 		}
-		account, err := auth.config.Db.GetAccount(Name, authCommand.Login)
+		account, _, err := auth.config.Db.GetAccount(Name, authCommand.Login)
 		if nil != err {
 			types.LOG_ERROR.Println("Unknown user ", authCommand.Login, " requested")
 			http.Error(w, fmt.Sprintf("Unknown user %s requested", authCommand.Login), http.StatusUnauthorized)
@@ -149,6 +150,7 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 		account.Auths = make(map[string]types.AccountSpecificAuth)
 		account.Login = create.Login
 		account.Email = create.Email
+		account.IsAdmin = false
 		authSpecific := types.AccountSpecificAuth{AuthType: Name, Blob: create.Password}
 		account.Auths[Name] = authSpecific
 		//TODO This should be the sha1 from the password
@@ -159,9 +161,9 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errMessage, http.StatusInternalServerError)
 			return
 		}
-		io.WriteString(w, fmt.Sprintf("{\"resp\":\"Welcome Mr %s\"}", account.Login))
-
+		io.WriteString(w, fmt.Sprintf("{\"resp\":\"Welcome Mr %s\", \"is_admin\":%b}", account.Login, account.IsAdmin))
 	case "validate":
+		//TODO
 	case "get_challenge":
 		if r.Method != "GET" {
 			http.NotFound(w, r)

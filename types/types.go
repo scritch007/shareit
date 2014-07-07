@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"net/http"
 	//  "fmt"
 )
 
@@ -16,9 +17,14 @@ type DatabaseInterface interface {
 
 	//We need to implement some authentication structures to
 	AddAccount(account *Account) (err error)
-	GetAccount(authType string, ref string) (account *Account, err error)
+	GetAccount(authType string, ref string) (account *Account, id string, err error) // if authType = "" we just want to match for the id, do not care about the authType
+	UpdateAccount(id string, account *Account)(err error)
 	GetUserAccount(id string) (account *Account, err error)
 	ListAccounts(searchDict map[string]string) (accounts []*Account, err error)
+
+	GetAccess(user *string, path string) (AccessType, error) //If user is nil then it's public access
+	SetAccess(user *string, path string, access AccessType) (error) // This can only be called by a admin...
+	ClearAccesses()(error) //Should only be called when configuration is done by files
 
 	StoreSession(session *Session) (err error)
 	GetSession(ref string) (session *Session, err error)
@@ -40,6 +46,7 @@ type Account struct {
 	Login string `json:"login"`
 	Email string `json:"email"`
 	Id    string `json:"id"` //This id should be unique depending on the DbType
+	IsAdmin bool `json:"is_admin"` //Can only be changed by the admin
 	//Add some other infos here for all the specific stuffs
 	Auths map[string]AccountSpecificAuth
 }
@@ -106,9 +113,9 @@ type CommandStatus struct {
 type AccessType int
 
 const (
+	NONE       AccessType = 0
 	READ       AccessType = 1
-	WRITE      AccessType = 2
-	READ_WRITE AccessType = 3
+	READ_WRITE AccessType = 2
 )
 
 //Element describing the an item
@@ -164,6 +171,7 @@ type ShareLink struct {
 	User     string            `json:"user"`                //This will only be set by server. This is the user that issued the share link
 	UserList *[]string         `json:"user_list,omitempty"` //This is only available for EnumRestricted mode
 	Type     EnumShareLinkType `json:"type"`
+	Access   *AccessType       `json:"access,omitempty"` //What access would people coming with this link have
 }
 
 type ShareLinkCreate struct {
@@ -213,19 +221,6 @@ func (c *Command) String() string {
 	return string(b)
 }
 
-type EnumCommandHandlerStatus int
-
-const (
-	EnumCommandHandlerError     EnumCommandHandlerStatus = 0
-	EnumCommandHandlerDone      EnumCommandHandlerStatus = 1
-	EnumCommandHandlerPostponed EnumCommandHandlerStatus = 2
-)
-
-type CommandHandler interface {
-	Handle(command *Command, resp chan<- EnumCommandHandlerStatus) (error, int) // int is for the http status code. Discard if error is nil
-	GetUploadPath(command *Command) (*string, error, int)                       // int is for the http status code. Discard if error is nil
-}
-
 type EnumAction string
 
 const (
@@ -240,3 +235,27 @@ const (
 	EnumShareLinkDelete     EnumAction = "share_link.delete"
 	EnumShareLinkGet        EnumAction = "share_link.get"
 )
+
+type EnumCommandHandlerStatus int
+
+const (
+	EnumCommandHandlerError     EnumCommandHandlerStatus = 0
+	EnumCommandHandlerDone      EnumCommandHandlerStatus = 1
+	EnumCommandHandlerPostponed EnumCommandHandlerStatus = 2
+)
+
+type HttpError struct {
+	Err    error
+	Status int
+}
+
+type CommandContext struct {
+	Command *Command
+	Account *Account
+	Request *http.Request
+}
+
+type CommandHandler interface {
+	Handle(context *CommandContext, resp chan<- EnumCommandHandlerStatus) *HttpError
+	GetUploadPath(context *CommandContext) (path *string, resultFileSize int64, hErr *HttpError)
+}

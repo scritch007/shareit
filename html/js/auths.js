@@ -206,6 +206,7 @@ function login(){
 								authorizationToken = result.authentication_header;
 								loginWindow.parentNode.removeChild(loginWindow);
 								localStorage.Authentication = authorizationToken;
+								browse(current_folder);
 							}
 						}
 					);
@@ -225,6 +226,7 @@ function logout(){
 	//Hide login button and show logout one
 	document.getElementById("logout").style.display="none";
 	document.getElementById("login").style.display="";
+	browse(current_folder);
 }
 
 var authorizationToken = null;

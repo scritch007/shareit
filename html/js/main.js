@@ -168,6 +168,7 @@ function createFolder(){
 	var createFolderPopup = document.createElement("div");
 	createFolderPopup.className = "window shadow";
 
+
 	var caption_div = Caption("Create New Folder");
 	createFolderPopup.appendChild(caption_div);
 	var folderNameLabel = document.createElement("label");
@@ -507,20 +508,21 @@ function deletePopup(path){
 }
 function uploadFile(){
 	//Create a popup div to enter the name of the folder to create
-	var uploadFilePopup = document.createElement("div");
+	var uploadFilePopup = document.createElement("form");
 	uploadFilePopup.className = "window shadow";
-
+	uploadFilePopup.onsubmit = function(){return false;};
 	var caption_div = Caption("uploadFile");
 	uploadFilePopup.appendChild(caption_div);
 	var folderNameLabel = document.createElement("label");
 	folderNameLabel.innerHTML = "Folder Name";
-	var folderNameInput = document.createElement("input");
-	folderNameInput.type = "file";
-	folderNameInput.id = "files";
-	folderNameInput.name = "file";
+	var fileNameInput = document.createElement("input");
+	fileNameInput.type = "file";
+	fileNameInput.id = "files";
+	fileNameInput.name = "file";
+	fileNameInput.setAttribute("required", true);
 	var nameDiv = document.createElement("div");
 	nameDiv.appendChild(folderNameLabel);
-	nameDiv.appendChild(folderNameInput);
+	nameDiv.appendChild(fileNameInput);
 	uploadFilePopup.appendChild(nameDiv);
 
 	var buttonDiv = document.createElement("div");
@@ -533,9 +535,15 @@ function uploadFile(){
 		uploadFilePopup.parentNode.removeChild(uploadFilePopup);
 	}
 	buttonDiv.appendChild(cancelButton);
-	var goButton = document.createElement("a");
+	var goButton = document.createElement("input");
+	goButton.type = "submit";
+	goButton.value = "Upload";
 	goButton.innerHTML = "Create";
 	goButton.onclick = function(){
+		if(!uploadFilePopup.checkValidity())
+		{
+			return;
+		}
 		goButton.disabled = true;
 		cancelButton.disabled = true;
 		path = current_folder;
@@ -547,15 +555,26 @@ function uploadFile(){
 				url: "commands",
 				method: "POST",
 				data: {
-					name: "browser.create_folder",
+					name: "browser.upload_file",
 					browser:{
-						create_folder:{
-							"path": path + folderNameInput.value
+						upload_file:{
+							"path": path + fileNameInput.files[0].name,
+							"size": fileNameInput.files[0].size
 						}
 					}
 				},
 				onSuccess: function(result){
-					browse(current_folder);
+					console.log(JSON.stringify(result));
+
+					var notification = new Notification({progressBar:true, name:fileNameInput.files[0].name});
+					function notificationUpdate(file, uploadedSize){
+						notification.progressBar.value = uploadedSize/this.size * 100;
+					}
+
+					//Now start the real work
+					uploader = new ChunkedUploader(fileNameInput.files[0], {url: "/commands/" + result.command_id, progressCB:notificationUpdate.bind(fileNameInput.files[0], notification)});
+					uploader.start();
+					document.getElementById("notifications").appendChild(notification);
 					uploadFilePopup.parentNode.removeChild(uploadFilePopup);
 				}
 			}
@@ -565,8 +584,5 @@ function uploadFile(){
 	buttonDiv.appendChild(goButton);
 	uploadFilePopup.appendChild(buttonDiv);
 	setPopup(uploadFilePopup);
-	folderNameInput.focus();
-	startReader(function(){console.log("Started Loading")}, function(evt){
-		console.log("Done");
-	})
+	fileNameInput.focus();
 }

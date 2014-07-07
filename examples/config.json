@@ -17,6 +17,35 @@
 			"db_folder": "/tmp/"
 		}
 	},
-	"default_database": "DummyDb"
-
+	"default_database": "DummyDb",
+	"allow_root_write": false,
+	"allow_changing_accesses": false,
+	"root_user":{
+		"login": "a",
+		"password": "a",
+		"email": "a@a.com"
+	},
+	"user_accesses": [
+		{
+			"user":"b@b.com",
+		 	"accesses":[
+				{
+					"name": "/ReadOnly",
+					"access": 1
+				},
+				{
+					"name": "/ReadWrite",
+					"access": 2
+				}
+			]
+		},
+		{
+			"accesses":[
+				{
+					"name": "/npm-8585",
+					"access": 1
+				}
+			]
+		}
+	]
 }

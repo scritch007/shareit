@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	//"path/filepath"
 	"strconv"
 	"strings"
 	//"github.com/scritch007/shareit/database"
@@ -16,6 +17,10 @@ import (
 const (
 	Name string = "DummyDb"
 )
+
+type pathAccesses struct {
+	Accesses map[string]types.AccessType
+}
 
 type DummyDatabase struct {
 	DbFolder       string `json:"db_folder"`
@@ -28,6 +33,8 @@ type DummyDatabase struct {
 	sessionMap     map[string]*types.Session
 	shareLinkMap   map[string]*types.ShareLink
 	shareLinkPath  string
+	accesses       map[string]*pathAccesses
+	accessPath   string
 }
 
 func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
@@ -56,7 +63,7 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 			if nil != err {
 				return nil, err
 			}
-			defer fo.Close()
+			fo.Close()
 		} else {
 			return nil, err
 		}
@@ -86,7 +93,7 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 			if nil != err {
 				return nil, err
 			}
-			defer fo.Close()
+			fo.Close()
 		} else {
 			return nil, err
 		}
@@ -98,6 +105,30 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 			return nil, err
 		}
 		err = json.Unmarshal(file, &d.shareLinkMap)
+		if nil != err {
+			return nil, err
+		}
+	}
+	d.accessPath = path.Join(d.DbFolder, "access.json")
+	if _, err := os.Stat(d.accessPath); err != nil {
+		var fo *os.File
+		if os.IsNotExist(err) {
+			fo, err = os.Create(d.accessPath)
+			if nil != err {
+				return nil, err
+			}
+			fo.Close()
+		} else {
+			return nil, err
+		}
+		d.accesses = make(map[string]*pathAccesses)
+		d.saveDb()
+	} else {
+		file, err := ioutil.ReadFile(d.accessPath)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(file, &d.accesses)
 		if nil != err {
 			return nil, err
 		}
@@ -143,7 +174,7 @@ func (d *DummyDatabase) SaveCommand(command *types.Command) (err error) {
 			d.commandsList = new_list
 		}
 	}
-	d.Log(DEBUG, fmt.Sprintf("%s : %s", "Saved new Command", command))
+	d.Log(DEBUG, fmt.Sprintf("%s : %s", "Saved new Command", command.Name))
 	return nil
 }
 func (d *DummyDatabase) ListCommands(user *string, offset int, limit int, search_parameters *types.CommandsSearchParameters) ([]*types.Command, int, error) {
@@ -212,22 +243,38 @@ func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
 
 	return d.saveDb()
 }
-func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.Account, err error) {
-	for _, elem := range d.accounts[0:d.accountsId] {
+
+func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.Account, id string, err error) {
+	for i, elem := range d.accounts[0:d.accountsId] {
 		if (ref == elem.Email) || (ref == elem.Login) {
+			if 0 == len(authType){
+				// No authType specified, this should only be for internal use...
+
+				return elem, strconv.Itoa(i), nil
+			}
 			_, found := elem.Auths[authType]
 			if !found {
 				message := fmt.Sprintf("Couldn't find this kind of authentication %s for %s", authType, ref)
 				d.Log(ERROR, message)
-				return nil, errors.New(message)
+				return nil, "", errors.New(message)
 			}
-			return elem, nil
+			return elem, strconv.Itoa(i), nil
 		}
 	}
 	message := fmt.Sprintf("Couldn't find the desired account %s:%s", authType, ref)
 	d.Log(ERROR, message)
-	return nil, errors.New(message)
+	return nil, "", errors.New(message)
 }
+
+func (d *DummyDatabase) UpdateAccount(id string, account *types.Account)(err error){
+	account_id, err := strconv.ParseInt(id, 0, 0)
+	if nil != err{
+		return err
+	}
+	d.accounts[account_id] = account
+	return nil
+}
+
 func (d *DummyDatabase) GetUserAccount(id string) (account *types.Account, err error) {
 	for _, elem := range d.accounts[0:d.accountsId] {
 		d.Log(DEBUG, fmt.Sprintf("Looking for %s comparing with %s", id, elem.Id))
@@ -356,8 +403,8 @@ func (d *DummyDatabase) saveDb() error {
 	if nil != err {
 		return err
 	}
-	defer fo.Close()
 	nbWriten, err := fo.Write(serialized)
+	fo.Close()
 	if nbWriten != len(serialized) {
 		d.Log(ERROR, "Couldn't write serialized object")
 		return errors.New("Couldn't write serialized object")
@@ -373,12 +420,86 @@ func (d *DummyDatabase) saveDb() error {
 	if nil != err {
 		return err
 	}
-	defer fo.Close()
 	nbWriten, err = fo.Write(serialized)
+	fo.Close()
 	if nbWriten != len(serialized) {
 		d.Log(ERROR, "Couldn't write serialized object")
 		return errors.New("Couldn't write serialized object")
 	}
 
+	serialized, err = json.Marshal(d.accesses)
+	if nil != err {
+		d.Log(ERROR, "Couldn't serialize accesses...")
+		return err
+	}
+
+	fo, err = os.OpenFile(d.accessPath, os.O_WRONLY, os.ModePerm)
+	if nil != err {
+		return err
+	}
+	nbWriten, err = fo.Write(serialized)
+	fo.Close()
+	if nbWriten != len(serialized) {
+		d.Log(ERROR, "Couldn't write serialized object")
+		return errors.New("Couldn't write serialized object")
+	}
+
+	return nil
+}
+
+func (d *DummyDatabase) GetAccess(user *string, path string) (types.AccessType, error) {
+	var user_email string
+	if nil == user{
+		user_email = ""
+	}else{
+		user_email = *user
+	}
+	accesses, found := d.accesses[user_email]
+	if !found{
+		// If user is not Nil then look for the public accesses
+		if nil == user{
+			return types.NONE, nil
+		}
+		accesses, found = d.accesses[""]
+		if !found{
+			return types.NONE, nil
+		}
+	}
+	//Now check for the path
+	splittedPath := strings.Split(path, "/")
+	finalAccessType := types.NONE
+	for i:=len(splittedPath); i > 0; i--{
+		accessType, found := accesses.Accesses[strings.Join(splittedPath[:i], "/")]
+		types.LOG_DEBUG.Println("Looking for access to ", strings.Join(splittedPath[:i], "/"))
+		if found{
+			finalAccessType = accessType
+			break
+		}
+	}
+
+	return finalAccessType, nil
+}
+func (d *DummyDatabase) SetAccess(user *string, path string, access types.AccessType) (error) {
+	var user_email string
+	if nil == user{
+		user_email = ""
+	}else{
+		user_email = *user
+	}
+	accesses, found := d.accesses[user_email]
+	if !found{
+		//Create accessPath dict
+		accesses = new(pathAccesses)
+		accesses.Accesses = make(map[string]types.AccessType)
+		d.accesses[user_email] = accesses
+	}
+	accesses.Accesses[path] = access
+	d.saveDb()
+	return nil
+}
+
+func (d *DummyDatabase) ClearAccesses() error{
+	d.accesses = make(map[string]*pathAccesses)
+	d.saveDb()
 	return nil
 }
