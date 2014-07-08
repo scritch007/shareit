@@ -11,6 +11,7 @@ import (
 	//"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	//"github.com/scritch007/shareit/database"
 )
 
@@ -35,6 +36,7 @@ type DummyDatabase struct {
 	shareLinkPath  string
 	accesses       map[string]*pathAccesses
 	accessPath   string
+	lock         sync.RWMutex
 }
 
 func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
@@ -162,6 +164,8 @@ func (d *DummyDatabase) Log(level LogLevel, message string) {
 	}
 }
 func (d *DummyDatabase) SaveCommand(command *types.Command) (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	if 0 == len(command.CommandId) {
 		d.commandsList[d.commandIndex] = command
 		command.CommandId = strconv.Itoa(d.commandIndex)
@@ -178,6 +182,8 @@ func (d *DummyDatabase) SaveCommand(command *types.Command) (err error) {
 	return nil
 }
 func (d *DummyDatabase) ListCommands(user *string, offset int, limit int, search_parameters *types.CommandsSearchParameters) ([]*types.Command, int, error) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 	tempResult := make([]*types.Command, d.commandIndex) // Maximum size this could have
 	nbResult := 0
 	for _, elem := range d.commandsList[0:d.commandIndex] {
@@ -189,6 +195,8 @@ func (d *DummyDatabase) ListCommands(user *string, offset int, limit int, search
 	return tempResult[0:nbResult], nbResult, nil
 }
 func (d *DummyDatabase) GetCommand(ref string) (command *types.Command, err error) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 	command_id, err := strconv.ParseInt(ref, 0, 0)
 	if nil != err {
 		return nil, err
@@ -198,14 +206,20 @@ func (d *DummyDatabase) GetCommand(ref string) (command *types.Command, err erro
 }
 
 func (d *DummyDatabase) DeleteCommand(ref *string) error {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	return nil
 }
 func (d *DummyDatabase) AddDownloadLink(link *types.DownloadLink) (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	d.Log(DEBUG, fmt.Sprintf("%s: %s", "Saving download link", link))
 	d.downloadLinks[link.Link] = link
 	return nil
 }
 func (d *DummyDatabase) GetDownloadLink(ref string) (link *types.DownloadLink, err error) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 	res, found := d.downloadLinks[ref]
 	if !found {
 		d.Log(ERROR, fmt.Sprintf("%s, %s", "Couldn't find download link", ref))
@@ -215,7 +229,8 @@ func (d *DummyDatabase) GetDownloadLink(ref string) (link *types.DownloadLink, e
 }
 
 func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
-
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	i := 0
 	var item *types.Account
 	//Iter once to check if same user already exists
@@ -245,6 +260,8 @@ func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
 }
 
 func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.Account, id string, err error) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 	for i, elem := range d.accounts[0:d.accountsId] {
 		if (ref == elem.Email) || (ref == elem.Login) {
 			if 0 == len(authType){
@@ -267,6 +284,8 @@ func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.
 }
 
 func (d *DummyDatabase) UpdateAccount(id string, account *types.Account)(err error){
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	account_id, err := strconv.ParseInt(id, 0, 0)
 	if nil != err{
 		return err
@@ -276,6 +295,8 @@ func (d *DummyDatabase) UpdateAccount(id string, account *types.Account)(err err
 }
 
 func (d *DummyDatabase) GetUserAccount(id string) (account *types.Account, err error) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 	for _, elem := range d.accounts[0:d.accountsId] {
 		d.Log(DEBUG, fmt.Sprintf("Looking for %s comparing with %s", id, elem.Id))
 		if id == elem.Id {
@@ -288,6 +309,8 @@ func (d *DummyDatabase) GetUserAccount(id string) (account *types.Account, err e
 }
 
 func (d *DummyDatabase) ListAccounts(searchDict map[string]string) (accounts []*types.Account, err error) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 	if 0 == len(searchDict) {
 		d.Log(DEBUG, "No search parameters")
 		return d.accounts[0:d.accountsId], nil
@@ -325,10 +348,14 @@ func (d *DummyDatabase) ListAccounts(searchDict map[string]string) (accounts []*
 }
 
 func (d *DummyDatabase) StoreSession(session *types.Session) (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	d.sessionMap[session.AuthenticationHeader] = session
 	return nil
 }
 func (d *DummyDatabase) GetSession(ref string) (session *types.Session, err error) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 	session, found := d.sessionMap[ref]
 	if !found {
 		return nil, errors.New("Couldn't find session")
@@ -337,13 +364,17 @@ func (d *DummyDatabase) GetSession(ref string) (session *types.Session, err erro
 }
 
 func (d *DummyDatabase) RemoveSession(ref string) (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	delete(d.sessionMap, ref)
 	return nil
 }
 
 func (d *DummyDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	//TODO check if there is already a sharelink with this name and user
-	_, err = d.GetShareLinkFromPath(*shareLink.Path, shareLink.User)
+	_, err = d.getShareLinkFromPath(*shareLink.Path, shareLink.User)
 	if nil == err {
 		err = errors.New("Share link already exists")
 		return err
@@ -352,6 +383,8 @@ func (d *DummyDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	return d.saveDb()
 }
 func (d *DummyDatabase) GetShareLink(key string) (shareLink *types.ShareLink, err error) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 	shareLink, found := d.shareLinkMap[key]
 	if !found {
 		message := fmt.Sprintf("Couldn't find share link %s", key)
@@ -361,10 +394,14 @@ func (d *DummyDatabase) GetShareLink(key string) (shareLink *types.ShareLink, er
 	return shareLink, nil
 }
 func (d *DummyDatabase) RemoveShareLink(key string) (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	delete(d.shareLinkMap, key)
 	return d.saveDb()
 }
 func (d *DummyDatabase) ListShareLinks(user string) (shareLinks []*types.ShareLink, err error) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 	shareLinks = make([]*types.ShareLink, 30)
 	currentId := 0
 	for _, shareLink := range d.shareLinkMap {
@@ -382,7 +419,16 @@ func (d *DummyDatabase) ListShareLinks(user string) (shareLinks []*types.ShareLi
 	}
 	return shareLinks, err
 }
+
 func (d *DummyDatabase) GetShareLinkFromPath(path string, user string) (shareLink *types.ShareLink, err error) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+	return d.getShareLinkFromPath(path, user)
+
+}
+
+func (d *DummyDatabase) getShareLinkFromPath(path string, user string) (shareLink *types.ShareLink, err error) {
+
 	for _, shareLink = range d.shareLinkMap {
 		if *shareLink.Path == path && shareLink.User == user {
 			return shareLink, nil
@@ -392,6 +438,8 @@ func (d *DummyDatabase) GetShareLinkFromPath(path string, user string) (shareLin
 }
 
 func (d *DummyDatabase) saveDb() error {
+	//d.lock.Lock()
+	//defer d.lock.Unlock()
 	serialized, err := json.Marshal(d.shareLinkMap)
 	if nil != err {
 		d.Log(ERROR, "Couldn't serialize share links...")
@@ -447,7 +495,13 @@ func (d *DummyDatabase) saveDb() error {
 	return nil
 }
 
-func (d *DummyDatabase) GetAccess(user *string, path string) (types.AccessType, error) {
+func (d * DummyDatabase) GetAccess(user *string, path string) (types.AccessType, error){
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+	return d.getAccess(user, path)
+}
+
+func (d *DummyDatabase) getAccess(user *string, path string) (types.AccessType, error) {
 	var user_email string
 	if nil == user{
 		user_email = ""
@@ -476,10 +530,15 @@ func (d *DummyDatabase) GetAccess(user *string, path string) (types.AccessType, 
 			break
 		}
 	}
+	if types.NONE == finalAccessType && nil != user{
+		return d.getAccess(nil, path)
+	}
 
 	return finalAccessType, nil
 }
 func (d *DummyDatabase) SetAccess(user *string, path string, access types.AccessType) (error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	var user_email string
 	if nil == user{
 		user_email = ""
@@ -499,6 +558,8 @@ func (d *DummyDatabase) SetAccess(user *string, path string, access types.Access
 }
 
 func (d *DummyDatabase) ClearAccesses() error{
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	d.accesses = make(map[string]*pathAccesses)
 	d.saveDb()
 	return nil
