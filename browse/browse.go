@@ -155,7 +155,29 @@ func (b *BrowseHandler) createFolderCommand(context *types.CommandContext, resp 
 		resp <- types.EnumCommandHandlerError
 		return
 	}
-	error := os.Mkdir(path.Join(b.config.RootPrefix, command.Browser.CreateFolder.Path), os.ModePerm)
+	asUser := nil == context.Account || !context.Account.IsAdmin
+	realPath, access, cmdError := b.getAccessAndPath(context, command.Browser.CreateFolder.Path, asUser)
+
+	if types.ERROR_NO_ERROR != cmdError{
+		command.State.ErrorCode = cmdError
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
+	if types.READ_WRITE != access{
+		command.State.ErrorCode = types.ERROR_NOT_ALLOWED
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
+	item_path, _ := b.checkItemPath(&realPath)
+	if nil == item_path {
+		command.State.ErrorCode = types.ERROR_INVALID_PATH
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
+	error := os.Mkdir(*item_path, os.ModePerm)
 	if nil != error {
 		resp <- types.EnumCommandHandlerError
 	} else {
@@ -286,7 +308,10 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 			access = folderAccess
 		} else {
 			s.Kind = "folder"
-			access, err = b.config.Db.GetAccess(command.User, path.Join("/", s.Name))
+			_, access, cmdError = b.getAccessAndPath(context, path.Join(command.Browser.List.Path, s.Name), asUser)
+			if types.ERROR_NO_ERROR != cmdError{
+				err = errors.New("Couldn't get infos about this")
+			}
 		}
 		if nil != err{
 			continue
@@ -299,7 +324,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 	}
 	command.Browser.List.Results = result[:counter]
 	time.Sleep(2)
-	resp <- types.EnumCommandHandlerError
+	resp <- types.EnumCommandHandlerDone
 }
 
 func (b *BrowseHandler) GetUploadPath(context *types.CommandContext) (path *string, size int64, hErr *types.HttpError) {
