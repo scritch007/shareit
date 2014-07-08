@@ -311,6 +311,8 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 			_, access, cmdError = b.getAccessAndPath(context, path.Join(command.Browser.List.Path, s.Name), asUser)
 			if types.ERROR_NO_ERROR != cmdError{
 				err = errors.New("Couldn't get infos about this")
+			}else{
+				err = nil
 			}
 		}
 		if nil != err{
