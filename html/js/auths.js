@@ -54,6 +54,7 @@ function signup(){
 	loginLabel.innerHTML = "Login";
 	loginLabel.htmlFor="loginInput";
 	var loginInput = document.createElement("input");
+	signupWindow.focusElement = loginInput;
 	loginInput.id="loginInput";
 	loginInput.type = "text";
 	loginInput.name="fname";
@@ -145,25 +146,34 @@ function signup(){
 }
 
 function login(){
-	var loginWindow = document.createElement("div");
+	var loginWindow = document.createElement("form");
+
 	loginWindow.className = "window shadow";
+	loginWindow.onsubmit = function(){return false;};
 	var caption = Caption("Log in");
 	loginWindow.appendChild(caption);
 	var contentDiv = document.createElement("div");
 	loginWindow.appendChild(contentDiv);
 	var loginDiv = document.createElement("div");
 	var loginLabel = document.createElement("label");
+	loginLabel.htmlFor="loginInput";
 	loginLabel.innerHTML = "Login";
 	var loginInput = document.createElement("input");
 	loginInput.type = "text";
+	loginInput.setAttribute("required", true);
+	loginWindow.focusElement = loginInput;
+	loginInput.placeholder = "Enter your login";
 	loginDiv.appendChild(loginLabel);
 	loginDiv.appendChild(loginInput);
 	contentDiv.appendChild(loginDiv);
 	var passwordDiv = document.createElement("div");
 	var passwordLabel = document.createElement("label");
+	passwordLabel.htmlFor="passwordInput";
 	passwordLabel.innerHTML = "Password";
 	var passwordInput = document.createElement("input");
-	passwordInput.type = "text";
+	passwordInput.type = "password";
+	passwordInput.setAttribute("required", true);
+	passwordInput.placeholder = "Enter your login";
 	passwordDiv.appendChild(passwordLabel);
 	passwordDiv.appendChild(passwordInput);
 	contentDiv.appendChild(passwordDiv);
@@ -177,9 +187,14 @@ function login(){
 		loginWindow.parentNode.removeChild(loginWindow);
 	}
 	buttonDiv.appendChild(cancelButton);
-	var goButton = document.createElement("a");
-	goButton.innerHTML = "Create";
+	var goButton = document.createElement("input");
+	goButton.type = "submit";
+	goButton.value = "Login";
 	goButton.onclick = function(){
+		if(!loginWindow.checkValidity())
+		{
+			return;
+		}
 		goButton.disabled = true;
 		cancelButton.disabled = true;
 		//Get the challenge

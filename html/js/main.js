@@ -19,6 +19,9 @@ function getQueryString() {
 function setPopup(popup){
 	mainWindow.innerHTML = "";
 	mainWindow.appendChild(popup);
+	if (undefined != popup.focusElement){
+		popup.focusElement.focus();
+	}
 }
 
 function init(){
@@ -195,10 +198,8 @@ function createFolder(){
 		if ("/" != path.charAt(path.length - 1)){
 			path = path + "/";
 		}
-		sendRequest(
+		sendCommand(
 			{
-				url: "commands",
-				method: "POST",
 				data: {
 					name: "browser.create_folder",
 					browser:{

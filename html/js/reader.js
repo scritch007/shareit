@@ -10,7 +10,7 @@ function ChunkedUploader(file, options) {
     this.progressCB = options.progressCB;
 
     this.file_size = this.file.size;
-    this.chunk_size = (1024 * 1024); // 100KB
+    this.chunk_size = (1024 * 1024); // 1024KB
     this.range_start = 0;
     this.range_end = this.chunk_size;
 
@@ -54,7 +54,7 @@ ChunkedUploader.prototype = {
             if (self.range_start !== 0) {
                 self.upload_request.setRequestHeader('Content-Range', 'bytes ' + self.range_start + '-' + self.range_end + '/' + self.file_size);
             }
-
+            self.chunk_time = new Date().getTime();
             self.upload_request.send(chunk);
 
             // TODO
@@ -91,6 +91,14 @@ ChunkedUploader.prototype = {
         // Update our ranges
         this.range_start = this.range_end;
         this.range_end = this.range_start + this.chunk_size;
+
+        //Ok check the current time for the response and increase the size of the chunk
+        var currentTime = new Date().getTime();
+        if ((currentTime - this.chunk_time)/1000 < 1){
+            this.chunk_size *= 2;
+        }else{
+            this.chunk_size /= 2;
+        }
 
         // Continue as long as we aren't paused
         if (!this.is_paused) {
