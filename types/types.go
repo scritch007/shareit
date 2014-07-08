@@ -63,6 +63,7 @@ type Configuration struct {
 	StaticPath string
 	HtmlPrefix string
 	WebPort    string
+	AllowRootWrite bool
 	Db         DatabaseInterface
 	Auth       *Authentication
 }
@@ -94,13 +95,15 @@ const (
 type EnumCommandErrorCode int
 
 const (
-	ERROR_MISSING_COMMAND_BODY = iota + 1
+	ERROR_NO_ERROR  = iota
+	ERROR_MISSING_COMMAND_BODY
 	ERROR_MISSING_PARAMETERS
 	ERROR_INVALID_PARAMETERS
 	ERROR_NOT_ALLOWED  //Should be set when accessing to things that user should be accessing to
 	ERROR_INVALID_PATH //Should be used for everything that refers to a filesystem path
 	ERROR_FILE_SYSTEM  //Should be used when an action on the file system fails (listing, removing, stat)
 	ERROR_SAVING       //Should only be raised to say saving failed...
+	ERROR_UNKNOWN      //Nothing specific there...
 )
 
 //Defines current command status + error code and current Progress

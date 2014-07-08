@@ -44,16 +44,12 @@ function browse(path){
 			}
 		}
 	};
-	var key = queryString["key"];
-	if (undefined != key){
-		command.auth_key = key;
-	}
 	request = {
 		data: command,
 		onSuccess: function(result){
 			current_folder = path;
 
-			display(result, undefined==key);
+			display(result, undefined==result.auth_key);
 		},
 		onError: function(request, status, error){
 			if (401 == request.status){
@@ -471,10 +467,8 @@ function deletePopup(path){
 	ok_button.value = "Yes";
 	ok_button.className = "button primary small";
 	ok_button.onclick = function(){
-		sendRequest(
+		sendCommand(
 			{
-				url: "commands",
-				method: "POST",
 				data: {
 					name: "browser.delete_item",
 					browser:{
@@ -550,10 +544,8 @@ function uploadFile(){
 		if ("/" != path.charAt(path.length - 1)){
 			path = path + "/";
 		}
-		sendRequest(
+		sendCommand(
 			{
-				url: "commands",
-				method: "POST",
 				data: {
 					name: "browser.upload_file",
 					browser:{

@@ -69,8 +69,30 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 		resp <- types.EnumCommandHandlerError
 		return
 	}
-	item_path, fileInfo := b.checkItemPath(&command.Browser.Delete.Path)
+	asUser := nil == context.Account || !context.Account.IsAdmin
+
+	realPath, access, cmdError := b.getAccessAndPath(context, command.Browser.Delete.Path, asUser)
+
+	if types.ERROR_NO_ERROR != cmdError{
+		command.State.ErrorCode = cmdError
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
+	if types.READ_WRITE != access{
+		command.State.ErrorCode = types.ERROR_NOT_ALLOWED
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
+	item_path, fileInfo := b.checkItemPath(&realPath)
 	if nil == item_path {
+		command.State.ErrorCode = types.ERROR_INVALID_PATH
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
+	if nil == fileInfo{
 		command.State.ErrorCode = types.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
@@ -113,16 +135,15 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 }
 
 //Extend the path with the RootPrefix and check if it exists.
-func (b *BrowseHandler) checkItemPath(inPath *string) (*string, os.FileInfo) {
-	item_path := path.Join(b.config.RootPrefix, *inPath)
-	fileInfo, err := os.Lstat(item_path)
+func (b *BrowseHandler) checkItemPath(item_path *string) (*string, os.FileInfo) {
+	fileInfo, err := os.Lstat(*item_path)
 	if nil != err {
 		if os.IsNotExist(err) {
-			return &item_path, nil
+			return item_path, nil
 		}
 		return nil, nil
 	}
-	return &item_path, fileInfo
+	return item_path, fileInfo
 }
 
 //Handle the creation of a folder
@@ -150,9 +171,27 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 		resp <- types.EnumCommandHandlerError
 		return
 	}
-	item_path, fileInfo := b.checkItemPath(&command.Browser.UploadFile.Path)
+
+	asUser := nil == context.Account || !context.Account.IsAdmin
+
+	realPath, access, cmdError := b.getAccessAndPath(context, command.Browser.UploadFile.Path, asUser)
+
+	if types.ERROR_NO_ERROR != cmdError{
+		command.State.ErrorCode = cmdError
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
+	item_path, fileInfo := b.checkItemPath(&realPath)
 	if nil == item_path {
 		command.State.ErrorCode = types.ERROR_INVALID_PATH
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
+	//If write access has been removed, then we should respond false!!
+	if types.READ_WRITE != access{
+		command.State.ErrorCode = types.ERROR_NOT_ALLOWED
 		resp <- types.EnumCommandHandlerError
 		return
 	}
@@ -163,6 +202,48 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 		return
 	}
 	resp <- types.EnumCommandHandlerPostponed
+}
+
+func (b *BrowseHandler) getAccessAndPath(context *types.CommandContext, inPath string, asUser bool) (realPath string, access types.AccessType, error types.EnumCommandErrorCode){
+	//First check if we have a Key. If we do then we'll chroot the browse command...
+	chroot := ""
+	access = types.READ // Default access type
+	isRoot := "/" == inPath
+	if nil != context.Command.AuthKey {
+		types.LOG_DEBUG.Println("There's an auth key")
+		share_link, err := b.config.Db.GetShareLink(*context.Command.AuthKey)
+		if nil != err {
+			return "", access, types.ERROR_INVALID_PARAMETERS
+		}
+		chroot = *share_link.Path
+		if nil != share_link.Access{
+			access = *share_link.Access
+		}
+		//TODO add some check depending on the type of share_link...
+	}else{
+		types.LOG_DEBUG.Println("There's no auth key")
+		if !isRoot{
+			//Check if user has access to this path
+			access, err := b.config.Db.GetAccess(context.Command.User, inPath)
+			if nil != err {
+				types.LOG_ERROR.Println("Couldn't get access " + err.Error())
+				return "", types.NONE ,types.ERROR_INVALID_PATH
+			}
+			if types.NONE == access && asUser{
+				return "", types.NONE, types.ERROR_NOT_ALLOWED
+			}
+		}else{
+			if b.config.AllowRootWrite{
+				//TODO
+			}
+		}
+	}
+	if !asUser{
+		access = types.READ_WRITE
+	}
+	realPath = path.Join(b.config.RootPrefix, chroot, inPath)
+	types.LOG_DEBUG.Println("Realpath is ", realPath)
+	return realPath, access, types.ERROR_NO_ERROR
 }
 
 //Handle the browsing of a folder
@@ -180,38 +261,14 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 		asUser = false
 	}
 
-	//First check if we have a Key. If we do then we'll chroot the browse command...
-	chroot := ""
-	access := types.READ // Default access type
-	isRoot := "/" == command.Browser.List.Path
-	if nil != command.AuthKey {
-		share_link, err := b.config.Db.GetShareLink(*command.AuthKey)
-		if nil != err {
-			command.State.ErrorCode = types.ERROR_INVALID_PARAMETERS
-			resp <- types.EnumCommandHandlerError
-			return
-		}
-		chroot = *share_link.Path
-		//TODO add some check depending on the type of share_link...
-	}else{
+	realPath, folderAccess, cmdError := b.getAccessAndPath(context, command.Browser.List.Path, asUser)
 
-		if !isRoot{
-			//Check if user has access to this path
-			access, err := b.config.Db.GetAccess(command.User, command.Browser.List.Path)
-			if nil != err {
-				types.LOG_ERROR.Println("Couldn't get access " + err.Error())
-				command.State.ErrorCode = types.ERROR_INVALID_PATH
-				resp <-types.EnumCommandHandlerError
-				return
-			}
-			if types.NONE == access && asUser{
-				command.State.ErrorCode = types.ERROR_NOT_ALLOWED
-				resp <- types.EnumCommandHandlerError
-				return
-			}
-		}
+	if types.ERROR_NO_ERROR != cmdError{
+		command.State.ErrorCode = cmdError
+		resp <- types.EnumCommandHandlerError
+		return
 	}
-	realPath := path.Join(b.config.RootPrefix, chroot, command.Browser.List.Path)
+
 	types.LOG_DEBUG.Println("Browsing path ", realPath)
 	fileList, err := ioutil.ReadDir(realPath)
 	if nil != err {
@@ -220,25 +277,23 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 	}
 	var result = make([]types.StorageItem, len(fileList))
 	counter := 0
+	var access types.AccessType
 	for _, file := range fileList {
 		s := types.StorageItem{Name: file.Name(), IsDir: file.IsDir(), ModificationDate: file.ModTime().Unix()}
 		if !file.IsDir() {
 			s.Size = file.Size()
 			s.Kind = filepath.Ext(file.Name())
+			access = folderAccess
 		} else {
 			s.Kind = "folder"
-		}
-		if isRoot{
 			access, err = b.config.Db.GetAccess(command.User, path.Join("/", s.Name))
-			if nil != err{
-				continue
-			}else if (types.NONE == access && asUser){
-				continue
-			}
-			s.Access = access
-		}else{
-			s.Access = access
 		}
+		if nil != err{
+			continue
+		}else if (types.NONE == access && asUser){
+			continue
+		}
+		s.Access = access
 		result[counter] = s
 		counter++
 	}
@@ -252,7 +307,17 @@ func (b *BrowseHandler) GetUploadPath(context *types.CommandContext) (path *stri
 	if types.EnumBrowserUploadFile != command.Name {
 		return nil, 0, &types.HttpError{errors.New("Not Allowed for this command type"), http.StatusBadRequest}
 	}
-	item_path, _ := b.checkItemPath(&command.Browser.UploadFile.Path)
+
+	realPath, access, cmdError := b.getAccessAndPath(context, command.Browser.UploadFile.Path, false)
+
+	if types.ERROR_NO_ERROR != cmdError{
+		return nil, 0, &types.HttpError{errors.New("Access Error"), http.StatusUnauthorized}
+	}
+	if types.READ_WRITE != access{
+		return nil, 0, &types.HttpError{errors.New("Access Error"), http.StatusUnauthorized}
+	}
+
+	item_path, _ := b.checkItemPath(&realPath)
 	if nil == item_path {
 		return nil, 0, &types.HttpError{errors.New("Invalid parameter"), http.StatusBadRequest}
 	}

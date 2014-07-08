@@ -262,6 +262,10 @@ function sendRequest(obj){
 function sendCommand(request){
 	request.url = "commands";
 	request.method = "POST";
+	var key = queryString["key"];
+	if (undefined != key){
+		request.data.auth_key = key;
+	}
 	if (undefined != request.poll && request.poll){
 		var tempOnSuccess = request.onSuccess;
 		request.onSuccess = function(result){

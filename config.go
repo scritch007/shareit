@@ -186,5 +186,6 @@ func NewConfiguration(r *mux.Router) (resultConfig *types.Configuration) {
 		}
 
 	}
+	resultConfig.AllowRootWrite = c.AllowRootWrite
 	return resultConfig
 }

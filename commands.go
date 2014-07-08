@@ -60,7 +60,11 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	}
 	if "GET" == r.Method {
 		// We want to list the commands that have been already answered
-		commands, _, err := c.config.Db.ListCommands(&user.Id, 0, -1, nil)
+		var userName *string = nil
+		if nil != user{
+			userName = &user.Id
+		}
+		commands, _, err := c.config.Db.ListCommands(userName, 0, -1, nil)
 		if nil != err {
 			errMessage := fmt.Sprintf("Invalid Input: %s", err)
 			types.LOG_ERROR.Println(errMessage)
@@ -209,17 +213,23 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ref := vars["command_id"]
 	command, err := c.config.Db.GetCommand(ref)
-	if nil != command.User && *command.User != user.Id {
+	if nil != command.User && (nil == user || *command.User != user.Id) {
 		http.Error(w, "You are trying to access some resources that do not belong to you", http.StatusUnauthorized)
 		return
 	}
 	if nil != err {
+		http.Error(w, fmt.Sprintf("Couldn't get this command ref %s", ref), http.StatusBadRequest)
 		return
 	}
 	if "GET" == r.Method {
 		b, _ := json.Marshal(command)
 		io.WriteString(w, string(b))
 	} else if "PUT" == r.Method {
+
+		if 100 == command.State.Progress{
+			http.Error(w, "Command already completed", http.StatusUnauthorized)
+			return
+		}
 		input, err := ioutil.ReadAll(r.Body)
 		types.LOG_DEBUG.Println("Received ", len(input), "bytes")
 		if nil != err {
@@ -231,6 +241,7 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 		h := c.getHandler(command)
 		commandContext := types.CommandContext{command, user, r}
 		uploadPath, size, hErr := h.GetUploadPath(&commandContext)
+
 		if nil != hErr {
 			errMessage := fmt.Sprintf("Failed to get upload path with error code: %s", hErr.Err)
 			types.LOG_ERROR.Println(errMessage)
