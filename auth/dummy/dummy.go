@@ -67,7 +67,7 @@ type Auth struct {
 
 type AuthResult struct {
 	AuthenticationHeader string `json:"authentication_header"`
-	IsAdmin string `json:"is_admin"`
+	IsAdmin              string `json:"is_admin"`
 }
 
 func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {

@@ -2,9 +2,9 @@ package browse
 
 import (
 	"errors"
+	"github.com/scritch007/shareit/auth"
 	"github.com/scritch007/shareit/tools"
 	"github.com/scritch007/shareit/types"
-	"github.com/scritch007/shareit/auth"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -54,7 +54,7 @@ func (b *BrowseHandler) downloadLink(context *types.CommandContext, resp chan<- 
 	}
 
 	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.GenerateDownloadLink.Path, false)
-	if !accessPath.Exists{
+	if !accessPath.Exists {
 		types.LOG_DEBUG.Println("Couldn't find this path")
 		command.State.ErrorCode = types.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
@@ -83,13 +83,13 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 
 	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.Delete.Path, asUser)
 
-	if types.ERROR_NO_ERROR != accessPath.Error{
+	if types.ERROR_NO_ERROR != accessPath.Error {
 		command.State.ErrorCode = accessPath.Error
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
-	if types.READ_WRITE != accessPath.Access{
+	if types.READ_WRITE != accessPath.Access {
 		command.State.ErrorCode = types.ERROR_NOT_ALLOWED
 		resp <- types.EnumCommandHandlerError
 		return
@@ -102,7 +102,7 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 		return
 	}
 
-	if !accessPath.Exists{
+	if !accessPath.Exists {
 		command.State.ErrorCode = types.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
@@ -156,13 +156,13 @@ func (b *BrowseHandler) createFolderCommand(context *types.CommandContext, resp 
 	asUser := nil == context.Account || !context.Account.IsAdmin
 	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.CreateFolder.Path, asUser)
 
-	if types.ERROR_NO_ERROR != accessPath.Error{
+	if types.ERROR_NO_ERROR != accessPath.Error {
 		command.State.ErrorCode = accessPath.Error
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
-	if types.READ_WRITE != accessPath.Access{
+	if types.READ_WRITE != accessPath.Access {
 		command.State.ErrorCode = types.ERROR_NOT_ALLOWED
 		resp <- types.EnumCommandHandlerError
 		return
@@ -175,7 +175,7 @@ func (b *BrowseHandler) createFolderCommand(context *types.CommandContext, resp 
 		return
 	}
 
-	if accessPath.Exists{
+	if accessPath.Exists {
 		command.State.ErrorCode = types.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
@@ -202,7 +202,7 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 
 	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.UploadFile.Path, asUser)
 
-	if types.ERROR_NO_ERROR != accessPath.Error{
+	if types.ERROR_NO_ERROR != accessPath.Error {
 		command.State.ErrorCode = accessPath.Error
 		resp <- types.EnumCommandHandlerError
 		return
@@ -216,7 +216,7 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 	}
 
 	//If write access has been removed, then we should respond false!!
-	if types.READ_WRITE != accessPath.Access{
+	if types.READ_WRITE != accessPath.Access {
 		command.State.ErrorCode = types.ERROR_NOT_ALLOWED
 		resp <- types.EnumCommandHandlerError
 		return
@@ -230,7 +230,6 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 	resp <- types.EnumCommandHandlerPostponed
 }
 
-
 //Handle the browsing of a folder
 func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
 	command := context.Command
@@ -241,14 +240,14 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 		return
 	}
 	asUser := true
-	if nil != context.Account && context.Account.IsAdmin{
+	if nil != context.Account && context.Account.IsAdmin {
 		//TODO checkt he asUser request header
 		asUser = false
 	}
 
 	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.List.Path, asUser)
 
-	if types.ERROR_NO_ERROR != accessPath.Error{
+	if types.ERROR_NO_ERROR != accessPath.Error {
 		command.State.ErrorCode = accessPath.Error
 		resp <- types.EnumCommandHandlerError
 		return
@@ -257,13 +256,13 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 	types.LOG_DEBUG.Println("Browsing path ", accessPath.RealPath)
 	counter := 0
 	var result []types.StorageItem
-	if !accessPath.IsDir{
+	if !accessPath.IsDir {
 		//TODO handle this properly
 		counter++
 		result = make([]types.StorageItem, 1)
-		s := types.StorageItem{Name: accessPath.FileInfo.Name(), IsDir: false, ModificationDate: accessPath.FileInfo.ModTime().Unix(), Access:types.READ, Kind:filepath.Ext(accessPath.FileInfo.Name())}
+		s := types.StorageItem{Name: accessPath.FileInfo.Name(), IsDir: false, ModificationDate: accessPath.FileInfo.ModTime().Unix(), Access: types.READ, Kind: filepath.Ext(accessPath.FileInfo.Name())}
 		result[0] = s
-	}else{
+	} else {
 		fileList, err := ioutil.ReadDir(*accessPath.RealPath)
 		if nil != err {
 			types.LOG_ERROR.Println("Failed to read path with error code " + err.Error())
@@ -281,16 +280,16 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 			} else {
 				s.Kind = "folder"
 				accessPath2, _ := auth.GetAccessAndPath(b.config, context, path.Join(command.Browser.List.Path, s.Name), asUser)
-				if types.ERROR_NO_ERROR != accessPath2.Error{
+				if types.ERROR_NO_ERROR != accessPath2.Error {
 					err = errors.New("Couldn't get infos about this")
-				}else{
+				} else {
 					err = nil
 				}
 				access = accessPath2.Access
 			}
-			if nil != err{
+			if nil != err {
 				continue
-			}else if (types.NONE == access && asUser){
+			} else if types.NONE == access && asUser {
 				continue
 			}
 			s.Access = access
@@ -311,10 +310,10 @@ func (b *BrowseHandler) GetUploadPath(context *types.CommandContext) (path *stri
 
 	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.UploadFile.Path, false)
 
-	if types.ERROR_NO_ERROR != accessPath.Error{
+	if types.ERROR_NO_ERROR != accessPath.Error {
 		return nil, 0, &types.HttpError{errors.New("Access Error"), http.StatusUnauthorized}
 	}
-	if types.READ_WRITE != accessPath.Access{
+	if types.READ_WRITE != accessPath.Access {
 		return nil, 0, &types.HttpError{errors.New("Access Error"), http.StatusUnauthorized}
 	}
 

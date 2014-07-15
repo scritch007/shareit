@@ -18,13 +18,13 @@ type DatabaseInterface interface {
 	//We need to implement some authentication structures to
 	AddAccount(account *Account) (err error)
 	GetAccount(authType string, ref string) (account *Account, id string, err error) // if authType = "" we just want to match for the id, do not care about the authType
-	UpdateAccount(id string, account *Account)(err error)
+	UpdateAccount(id string, account *Account) (err error)
 	GetUserAccount(id string) (account *Account, err error)
 	ListAccounts(searchDict map[string]string) (accounts []*Account, err error)
 
-	GetAccess(user *string, path string) (AccessType, error) //If user is nil then it's public access
-	SetAccess(user *string, path string, access AccessType) (error) // This can only be called by a admin...
-	ClearAccesses()(error) //Should only be called when configuration is done by files
+	GetAccess(user *string, path string) (AccessType, error)      //If user is nil then it's public access
+	SetAccess(user *string, path string, access AccessType) error // This can only be called by a admin...
+	ClearAccesses() error                                         //Should only be called when configuration is done by files
 
 	StoreSession(session *Session) (err error)
 	GetSession(ref string) (session *Session, err error)
@@ -43,10 +43,10 @@ type AccountSpecificAuth struct {
 	Blob     string `json:"specific"`
 }
 type Account struct {
-	Login string `json:"login"`
-	Email string `json:"email"`
-	Id    string `json:"id"` //This id should be unique depending on the DbType
-	IsAdmin bool `json:"is_admin"` //Can only be changed by the admin
+	Login   string `json:"login"`
+	Email   string `json:"email"`
+	Id      string `json:"id"`       //This id should be unique depending on the DbType
+	IsAdmin bool   `json:"is_admin"` //Can only be changed by the admin
 	//Add some other infos here for all the specific stuffs
 	Auths map[string]AccountSpecificAuth
 }
@@ -58,19 +58,19 @@ type Session struct {
 
 //Configuration Structure
 type Configuration struct {
-	RootPrefix string
-	PrivateKey string
-	StaticPath string
-	HtmlPrefix string
-	WebPort    string
+	RootPrefix     string
+	PrivateKey     string
+	StaticPath     string
+	HtmlPrefix     string
+	WebPort        string
 	AllowRootWrite bool
-	Db         DatabaseInterface
-	Auth       *Authentication
+	Db             DatabaseInterface
+	Auth           *Authentication
 }
 
 type DownloadLink struct {
-	Link string `json:"link"`
-	Path string `json:"path"`
+	Link     string  `json:"link"`
+	Path     string  `json:"path"`
 	RealPath *string `json:"real_path,omitempty"` //Will only be used when storing in the DB
 }
 
@@ -96,7 +96,7 @@ const (
 type EnumCommandErrorCode int
 
 const (
-	ERROR_NO_ERROR  = iota
+	ERROR_NO_ERROR = iota
 	ERROR_MISSING_COMMAND_BODY
 	ERROR_MISSING_PARAMETERS
 	ERROR_INVALID_PARAMETERS

@@ -1,14 +1,14 @@
 package auth
 
 import (
-"path"
-"os"
-"path/filepath"
 	"encoding/json"
 	"errors"
 	"github.com/gorilla/mux"
 	"github.com/scritch007/shareit/auth/dummy"
 	"github.com/scritch007/shareit/types"
+	"os"
+	"path"
+	"path/filepath"
 )
 
 type configSubStruct struct {
@@ -42,23 +42,22 @@ func NewAuthentication(config *json.RawMessage, r *mux.Router, globalConfig *typ
 	return newAuth, err
 }
 
-type AccessPath struct{
-	RealPath *string
-	Access types.AccessType
-	Error types.EnumCommandErrorCode
-	IsDir bool
-	Exists bool
+type AccessPath struct {
+	RealPath    *string
+	Access      types.AccessType
+	Error       types.EnumCommandErrorCode
+	IsDir       bool
+	Exists      bool
 	IsShareLink bool
-	FileInfo os.FileInfo
+	FileInfo    os.FileInfo
 }
 
-
-func GetAccessAndPath(config *types.Configuration, context *types.CommandContext, inPath string, asUser bool) (AccessPath, error){
+func GetAccessAndPath(config *types.Configuration, context *types.CommandContext, inPath string, asUser bool) (AccessPath, error) {
 	//First check if we have a Key. If we do then we'll chroot the browse command...
 	chroot := ""
 	access := types.READ // Default access type
 	isRoot := "/" == inPath
-	var accessPath = AccessPath{Access:types.NONE, Error:types.ERROR_NO_ERROR, Exists:false, IsShareLink:false, FileInfo:nil}
+	var accessPath = AccessPath{Access: types.NONE, Error: types.ERROR_NO_ERROR, Exists: false, IsShareLink: false, FileInfo: nil}
 
 	if nil != context.Command.AuthKey {
 		types.LOG_DEBUG.Println("There's an auth key")
@@ -70,30 +69,30 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 			return accessPath, err
 		}
 		chroot = *share_link.Path
-		if nil != share_link.Access{
+		if nil != share_link.Access {
 			access = *share_link.Access
 		}
 		//TODO add some check depending on the type of share_link...
 
 		//Check if share_link is a directory if not check that basename/dirname are correct
 		fileInfo, err := os.Lstat(path.Join(config.RootPrefix, chroot))
-		if nil != err{
+		if nil != err {
 			types.LOG_ERROR.Println(err)
 			accessPath.Error = types.ERROR_INVALID_PATH
 			return accessPath, err
 		}
-		if !fileInfo.IsDir(){
+		if !fileInfo.IsDir() {
 			baseName := filepath.Base(chroot)
-			if 1 != len(inPath) && baseName != inPath[1:]{
+			if 1 != len(inPath) && baseName != inPath[1:] {
 				types.LOG_ERROR.Println(err)
 				accessPath.Error = types.ERROR_INVALID_PATH
 				return accessPath, err
 			}
 			chroot = filepath.Dir(chroot)
 		}
-	}else{
+	} else {
 		types.LOG_DEBUG.Println("There's no auth key")
-		if !isRoot{
+		if !isRoot {
 			//Check if user has access to this path
 			access, err := config.Db.GetAccess(context.Command.User, inPath)
 			if nil != err {
@@ -101,27 +100,27 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 				accessPath.Error = types.ERROR_INVALID_PATH
 				return accessPath, err
 			}
-			if types.NONE == access && asUser{
+			if types.NONE == access && asUser {
 				accessPath.Error = types.ERROR_NOT_ALLOWED
 				return accessPath, nil
 			}
-		}else{
-			if config.AllowRootWrite{
+		} else {
+			if config.AllowRootWrite {
 				//TODO
 			}
 		}
 	}
-	if !asUser{
+	if !asUser {
 		access = types.READ_WRITE
 	}
 	realPath := path.Clean(path.Join(config.RootPrefix, chroot, inPath))
 	fileInfo, err := os.Lstat(realPath)
 	if nil != err {
-		if !os.IsNotExist(err){
+		if !os.IsNotExist(err) {
 			types.LOG_ERROR.Println("Error accessing to the file " + realPath + err.Error())
 			return accessPath, err
 		}
-	}else{
+	} else {
 		accessPath.IsDir = fileInfo.IsDir()
 		accessPath.Exists = true
 		accessPath.FileInfo = fileInfo
@@ -133,6 +132,3 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 	types.LOG_DEBUG.Println("Realpath is ", realPath)
 	return accessPath, nil
 }
-
-
-

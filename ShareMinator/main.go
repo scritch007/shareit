@@ -48,12 +48,11 @@ func (m *Main) serveHTMLFile(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path.Join(m.path, "html", file+".html"))
 }
 
-
-type ShareMinatorConfig struct{
+type ShareMinatorConfig struct {
 	AllowChangingAccesses bool `json:"change_access"`
 }
 
-func (m *Main) configHandler(w http.ResponseWriter, r *http.Request){
+func (m *Main) configHandler(w http.ResponseWriter, r *http.Request) {
 	conf := ShareMinatorConfig{false}
 	b, _ := json.Marshal(conf)
 	io.WriteString(w, string(b))

@@ -35,8 +35,8 @@ type DummyDatabase struct {
 	shareLinkMap   map[string]*types.ShareLink
 	shareLinkPath  string
 	accesses       map[string]*pathAccesses
-	accessPath   string
-	lock         sync.RWMutex
+	accessPath     string
+	lock           sync.RWMutex
 }
 
 func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
@@ -264,7 +264,7 @@ func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.
 	defer d.lock.RUnlock()
 	for i, elem := range d.accounts[0:d.accountsId] {
 		if (ref == elem.Email) || (ref == elem.Login) {
-			if 0 == len(authType){
+			if 0 == len(authType) {
 				// No authType specified, this should only be for internal use...
 
 				return elem, strconv.Itoa(i), nil
@@ -283,11 +283,11 @@ func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.
 	return nil, "", errors.New(message)
 }
 
-func (d *DummyDatabase) UpdateAccount(id string, account *types.Account)(err error){
+func (d *DummyDatabase) UpdateAccount(id string, account *types.Account) (err error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	account_id, err := strconv.ParseInt(id, 0, 0)
-	if nil != err{
+	if nil != err {
 		return err
 	}
 	d.accounts[account_id] = account
@@ -495,7 +495,7 @@ func (d *DummyDatabase) saveDb() error {
 	return nil
 }
 
-func (d * DummyDatabase) GetAccess(user *string, path string) (types.AccessType, error){
+func (d *DummyDatabase) GetAccess(user *string, path string) (types.AccessType, error) {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 	return d.getAccess(user, path)
@@ -503,50 +503,50 @@ func (d * DummyDatabase) GetAccess(user *string, path string) (types.AccessType,
 
 func (d *DummyDatabase) getAccess(user *string, path string) (types.AccessType, error) {
 	var user_email string
-	if nil == user{
+	if nil == user {
 		user_email = ""
-	}else{
+	} else {
 		user_email = *user
 	}
 	accesses, found := d.accesses[user_email]
-	if !found{
+	if !found {
 		// If user is not Nil then look for the public accesses
-		if nil == user{
+		if nil == user {
 			return types.NONE, nil
 		}
 		accesses, found = d.accesses[""]
-		if !found{
+		if !found {
 			return types.NONE, nil
 		}
 	}
 	//Now check for the path
 	splittedPath := strings.Split(path, "/")
 	finalAccessType := types.NONE
-	for i:=len(splittedPath); i > 0; i--{
+	for i := len(splittedPath); i > 0; i-- {
 		accessType, found := accesses.Accesses[strings.Join(splittedPath[:i], "/")]
 		types.LOG_DEBUG.Println("Looking for access to ", strings.Join(splittedPath[:i], "/"))
-		if found{
+		if found {
 			finalAccessType = accessType
 			break
 		}
 	}
-	if types.NONE == finalAccessType && nil != user{
+	if types.NONE == finalAccessType && nil != user {
 		return d.getAccess(nil, path)
 	}
 
 	return finalAccessType, nil
 }
-func (d *DummyDatabase) SetAccess(user *string, path string, access types.AccessType) (error) {
+func (d *DummyDatabase) SetAccess(user *string, path string, access types.AccessType) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	var user_email string
-	if nil == user{
+	if nil == user {
 		user_email = ""
-	}else{
+	} else {
 		user_email = *user
 	}
 	accesses, found := d.accesses[user_email]
-	if !found{
+	if !found {
 		//Create accessPath dict
 		accesses = new(pathAccesses)
 		accesses.Accesses = make(map[string]types.AccessType)
@@ -557,7 +557,7 @@ func (d *DummyDatabase) SetAccess(user *string, path string, access types.Access
 	return nil
 }
 
-func (d *DummyDatabase) ClearAccesses() error{
+func (d *DummyDatabase) ClearAccesses() error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	d.accesses = make(map[string]*pathAccesses)

@@ -3,11 +3,11 @@ package shareit
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"github.com/gorilla/mux"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	//	"strconv"
 	"errors"
 	"github.com/scritch007/shareit/browse"
@@ -61,7 +61,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	if "GET" == r.Method {
 		// We want to list the commands that have been already answered
 		var userName *string = nil
-		if nil != user{
+		if nil != user {
 			userName = &user.Id
 		}
 		commands, _, err := c.config.Db.ListCommands(userName, 0, -1, nil)
@@ -86,9 +86,9 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = json.Unmarshal(input, command)
-	if nil != user{
+	if nil != user {
 		command.User = &user.Id //Store current user
-	}else{
+	} else {
 		command.User = nil
 	}
 	if nil != err {
@@ -226,7 +226,7 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, string(b))
 	} else if "PUT" == r.Method {
 
-		if 100 == command.State.Progress{
+		if 100 == command.State.Progress {
 			http.Error(w, "Command already completed", http.StatusUnauthorized)
 			return
 		}
