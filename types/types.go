@@ -71,6 +71,7 @@ type Configuration struct {
 type DownloadLink struct {
 	Link string `json:"link"`
 	Path string `json:"path"`
+	RealPath *string `json:"real_path,omitempty"` //Will only be used when storing in the DB
 }
 
 func (d *DownloadLink) String() string {

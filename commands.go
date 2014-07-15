@@ -3,11 +3,11 @@ package shareit
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"github.com/gorilla/mux"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"path"
 	//	"strconv"
 	"errors"
 	"github.com/scritch007/shareit/browse"
@@ -302,8 +302,11 @@ func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
 	file := vars["file"]
 
 	link, err := c.config.Db.GetDownloadLink(file)
+	//Get the realpath depending on the configuration and the sharelink or direct download
 	if nil == err {
-		http.ServeFile(w, r, path.Join(c.config.RootPrefix, link.Path))
+		types.LOG_DEBUG.Println("Serving file ", *link.RealPath)
+		w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(*link.RealPath))
+		http.ServeFile(w, r, *link.RealPath)
 	} else {
 		http.Error(w, "Download link is unavailable. Try renewing link", http.StatusNotFound)
 	}

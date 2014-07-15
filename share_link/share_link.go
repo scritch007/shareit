@@ -40,19 +40,20 @@ func (s *ShareLinkHandler) create(context *types.CommandContext, resp chan<- typ
 	item_path := path.Join(s.config.RootPrefix, *command.ShareLink.Create.ShareLink.Path)
 	types.LOG_DEBUG.Println("Creating sharelink for " + item_path)
 
-	fileInfo, err := os.Lstat(item_path)
+	_, err := os.Lstat(item_path)
 	if nil != err {
 		types.LOG_ERROR.Println("Couldn't access to path ", item_path)
 		command.State.ErrorCode = types.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
 	}
-	if !fileInfo.IsDir() {
-		types.LOG_ERROR.Println(item_path, " is not a directory...")
-		command.State.ErrorCode = types.ERROR_INVALID_PATH
-		resp <- types.EnumCommandHandlerError
-		return
-	}
+	//Remove this part allow sharing a single file
+	//if !fileInfo.IsDir() {
+	//	types.LOG_ERROR.Println(item_path, " is not a directory...")
+	//	command.State.ErrorCode = types.ERROR_INVALID_PATH
+	//	resp <- types.EnumCommandHandlerError
+	//	return
+	//}
 	key, err := randutil.AlphaString(20)
 	command.ShareLink.Create.ShareLink.Key = &key
 	command.ShareLink.Create.ShareLink.User = *command.User

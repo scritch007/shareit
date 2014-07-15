@@ -108,10 +108,8 @@ function display(result, add_share_callback){
 		}else{
 			downloadCB = function(path, event){
 				event.stopPropagation()
-				sendRequest(
+				sendCommand(
 					{
-						url: "commands",
-						method: "POST",
 						data: {
 							name: "browser.download_link",
 							browser:{
@@ -271,7 +269,6 @@ function sharePopup(element, result){
 	var content_div = document.createElement("div");
 	content_div.className = "content";
 	content_div.id = "share_link_content";
-	var display_content_div = document.createElement("div");
 
 	var keyDiv = document.createElement("div");
 	var keyLabel = document.createElement("div");
@@ -284,7 +281,7 @@ function sharePopup(element, result){
 	if (null != share_link){
 		keyInput.value = share_link.key;
 	}
-	display_content_div.appendChild(keyDiv);
+	content_div.appendChild(keyDiv);
 
 	var shareLinkTypeDiv = document.createElement("div");
 	var shareLinkTypeLabel = document.createElement("label");
@@ -324,6 +321,17 @@ function sharePopup(element, result){
 	shareLinkSpecificDiv.appendChild(shareLinkDivRestricted);
 	shareLinkDivRestricted.id = "share_link_restricted";
 
+	//Add the list of users added to this share link
+	var usersUl = document.createElement("ul");
+	shareLinkDivRestricted.appendChild(usersUl);
+	if (null != share_link && "restricted" == share_link.type){
+		for(var i=0; i < share_link.user_list.length; i++){
+			var userLi = document.createElement("li");
+			userLi.innerHTML = share_link.user_list[i];
+			userUl.appendChild(userLi);
+		}
+	}
+
 	//Share Restricted requires listing the users..
 	var searchTimer = null;
 	var searchUsersDiv = document.createElement("div");
@@ -339,6 +347,7 @@ function sharePopup(element, result){
 	iButtonPlus.className = "icon-plus";
 	buttonPlus.appendChild(iButtonPlus);
 	buttonPlus.onclick = function(event){
+		//TODO add user to user list
 		event.stopPropagation();
 	}
 	searchUsersSpan.appendChild(buttonPlus);
@@ -372,7 +381,6 @@ function sharePopup(element, result){
 	shareLinkDivRestricted.appendChild(selectedUsers);
 
 	content_div.appendChild(shareLinkSpecificDiv);
-	content_div.appendChild(display_content_div);
 	window_div.appendChild(content_div);
 	var buttonDiv = document.createElement("div");
 	buttonDiv.className = "footer";
@@ -382,16 +390,20 @@ function sharePopup(element, result){
 	ok_button.value = "Yes";
 	ok_button.className = "button primary small";
 	ok_button.onclick = function(){
+		var cmd_name = null == share_link ? "create":"update";
 		command = {
-			name: "share_link.create",
+			name: "share_link." + cmd_name,
+			share_link: {}
+		};
+		command.share_link[cmd_name] = {
 			share_link: {
-				create: {
-					share_link: {
-						path: current_folder +"/" + element.name,
-						type: shareLinkTypeSelect.selectedOptions[0].value
-					}
-				}
+				path: current_folder +"/" + element.name,
+				type: shareLinkTypeSelect.selectedOptions[0].value
 			}
+		};
+		if ("restricted" == shareLinkTypeSelect.selectedOptions[0].value){
+			//Add the users that have access to this share link
+
 		}
 		sendCommand(
 			{

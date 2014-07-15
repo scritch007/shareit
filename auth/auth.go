@@ -1,6 +1,9 @@
 package auth
 
 import (
+"path"
+"os"
+"path/filepath"
 	"encoding/json"
 	"errors"
 	"github.com/gorilla/mux"
@@ -38,3 +41,98 @@ func NewAuthentication(config *json.RawMessage, r *mux.Router, globalConfig *typ
 
 	return newAuth, err
 }
+
+type AccessPath struct{
+	RealPath *string
+	Access types.AccessType
+	Error types.EnumCommandErrorCode
+	IsDir bool
+	Exists bool
+	IsShareLink bool
+	FileInfo os.FileInfo
+}
+
+
+func GetAccessAndPath(config *types.Configuration, context *types.CommandContext, inPath string, asUser bool) (AccessPath, error){
+	//First check if we have a Key. If we do then we'll chroot the browse command...
+	chroot := ""
+	access := types.READ // Default access type
+	isRoot := "/" == inPath
+	var accessPath = AccessPath{Access:types.NONE, Error:types.ERROR_NO_ERROR, Exists:false, IsShareLink:false, FileInfo:nil}
+
+	if nil != context.Command.AuthKey {
+		types.LOG_DEBUG.Println("There's an auth key")
+		share_link, err := config.Db.GetShareLink(*context.Command.AuthKey)
+		accessPath.IsShareLink = true
+		if nil != err {
+			types.LOG_ERROR.Println("Share link error " + err.Error())
+			accessPath.Error = types.ERROR_INVALID_PARAMETERS
+			return accessPath, err
+		}
+		chroot = *share_link.Path
+		if nil != share_link.Access{
+			access = *share_link.Access
+		}
+		//TODO add some check depending on the type of share_link...
+
+		//Check if share_link is a directory if not check that basename/dirname are correct
+		fileInfo, err := os.Lstat(path.Join(config.RootPrefix, chroot))
+		if nil != err{
+			types.LOG_ERROR.Println(err)
+			accessPath.Error = types.ERROR_INVALID_PATH
+			return accessPath, err
+		}
+		if !fileInfo.IsDir(){
+			baseName := filepath.Base(chroot)
+			if 1 != len(inPath) && baseName != inPath[1:]{
+				types.LOG_ERROR.Println(err)
+				accessPath.Error = types.ERROR_INVALID_PATH
+				return accessPath, err
+			}
+			chroot = filepath.Dir(chroot)
+		}
+	}else{
+		types.LOG_DEBUG.Println("There's no auth key")
+		if !isRoot{
+			//Check if user has access to this path
+			access, err := config.Db.GetAccess(context.Command.User, inPath)
+			if nil != err {
+				types.LOG_ERROR.Println("Couldn't get access " + err.Error())
+				accessPath.Error = types.ERROR_INVALID_PATH
+				return accessPath, err
+			}
+			if types.NONE == access && asUser{
+				accessPath.Error = types.ERROR_NOT_ALLOWED
+				return accessPath, nil
+			}
+		}else{
+			if config.AllowRootWrite{
+				//TODO
+			}
+		}
+	}
+	if !asUser{
+		access = types.READ_WRITE
+	}
+	realPath := path.Clean(path.Join(config.RootPrefix, chroot, inPath))
+	fileInfo, err := os.Lstat(realPath)
+	if nil != err {
+		if !os.IsNotExist(err){
+			types.LOG_ERROR.Println("Error accessing to the file " + realPath + err.Error())
+			return accessPath, err
+		}
+	}else{
+		accessPath.IsDir = fileInfo.IsDir()
+		accessPath.Exists = true
+		accessPath.FileInfo = fileInfo
+	}
+
+	accessPath.RealPath = &realPath
+	accessPath.Access = access
+
+	types.LOG_DEBUG.Println("Realpath is ", realPath)
+	return accessPath, nil
+}
+
+
+

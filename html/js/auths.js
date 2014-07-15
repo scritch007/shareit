@@ -15,13 +15,13 @@ function HandleAuthsResult(result){
 }
 
 function checkAuth(callback){
-	if (undefined != localStorage.Authentication){
+	if (undefined != sessionStorage.Authentication){
 		//Hide login button and show logout one
 		document.getElementById("logout").style.display="";
 		document.getElementById("login").style.display="none";
-		authorizationToken = localStorage.Authentication;
+		authorizationToken = sessionStorage.Authentication;
 		//Todo ask for who you really are
-		callback(localStorage.Authentication);
+		callback(sessionStorage.Authentication);
 	}else{
 		callback(null);
 	}
@@ -220,7 +220,7 @@ function login(){
 								//Set the Global Header
 								authorizationToken = result.authentication_header;
 								loginWindow.parentNode.removeChild(loginWindow);
-								localStorage.Authentication = authorizationToken;
+								sessionStorage.Authentication = authorizationToken;
 								browse(current_folder);
 							}
 						}
@@ -236,7 +236,7 @@ function login(){
 }
 
 function logout(){
-	delete localStorage.Authentication;
+	delete sessionStorage.Authentication;
 	authorizationToken = null;
 	//Hide login button and show logout one
 	document.getElementById("logout").style.display="none";
