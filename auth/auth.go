@@ -83,37 +83,41 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 		}
 		if !fileInfo.IsDir() {
 			baseName := filepath.Base(chroot)
-			if 1 != len(inPath) && baseName != inPath[1:] {
+			if "/" != inPath && baseName != inPath[1:] {
 				types.LOG_ERROR.Println(err)
 				accessPath.Error = types.ERROR_INVALID_PATH
 				return accessPath, err
+			}else if ("/" != inPath){
+				chroot = filepath.Dir(chroot)
 			}
-			chroot = filepath.Dir(chroot)
 		}
 	} else {
 		types.LOG_DEBUG.Println("There's no auth key")
-		if !isRoot {
-			//Check if user has access to this path
-			access, err := config.Db.GetAccess(context.Command.User, inPath)
-			if nil != err {
-				types.LOG_ERROR.Println("Couldn't get access " + err.Error())
-				accessPath.Error = types.ERROR_INVALID_PATH
-				return accessPath, err
-			}
-			if types.NONE == access && asUser {
-				accessPath.Error = types.ERROR_NOT_ALLOWED
-				return accessPath, nil
-			}
-		} else {
-			if config.AllowRootWrite {
-				//TODO
+		if !asUser {
+			access = types.READ_WRITE
+		}else{
+			if !isRoot {
+				//Check if user has access to this path
+				access, err := config.Db.GetAccess(context.Command.User, inPath)
+				if nil != err {
+					types.LOG_ERROR.Println("Couldn't get access " + err.Error())
+					accessPath.Error = types.ERROR_INVALID_PATH
+					return accessPath, err
+				}
+				if types.NONE == access {
+					accessPath.Error = types.ERROR_NOT_ALLOWED
+					return accessPath, nil
+				}
+			} else {
+				if config.AllowRootWrite {
+					//TODO
+				}
 			}
 		}
 	}
-	if !asUser {
-		access = types.READ_WRITE
-	}
+
 	realPath := path.Clean(path.Join(config.RootPrefix, chroot, inPath))
+	types.LOG_DEBUG.Println("Realpath is " + realPath)
 	fileInfo, err := os.Lstat(realPath)
 	if nil != err {
 		if !os.IsNotExist(err) {

@@ -317,8 +317,5 @@ func (b *BrowseHandler) GetUploadPath(context *types.CommandContext) (path *stri
 		return nil, 0, &types.HttpError{errors.New("Access Error"), http.StatusUnauthorized}
 	}
 
-	if !accessPath.Exists {
-		return nil, 0, &types.HttpError{errors.New("Invalid parameter"), http.StatusBadRequest}
-	}
 	return accessPath.RealPath, command.Browser.UploadFile.Size, nil
 }

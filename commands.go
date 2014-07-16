@@ -294,6 +294,10 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 		defer f.Close()
 		f.Seek(offset, os.SEEK_SET)
 		io.WriteString(f, string(input))
+		command.State.Progress = int((offset + int64(len(input))) * 100 / size)
+		if (100 == command.State.Progress){
+			command.State.Status = types.COMMAND_STATUS_DONE
+		}
 	}
 }
 
