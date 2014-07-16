@@ -569,16 +569,22 @@ function uploadFile(){
 					}
 				},
 				onSuccess: function(result){
-					console.log(JSON.stringify(result));
+					//Check if inprogress is the status
+					if (2 != result.state.status){
+						var notification = new Notification({name:fileNameInput.files[0].name, status:"Upload Failed"});
+					}else{
 
-					var notification = new Notification({progressBar:true, name:fileNameInput.files[0].name});
-					function notificationUpdate(file, uploadedSize){
-						notification.progressBar.value = uploadedSize/this.size * 100;
+						var notification = new Notification({progressBar:true, name:fileNameInput.files[0].name, status:"Uploading"});
+						function notificationUpdate(file, uploadedSize){
+							notification.progressBar.value = uploadedSize/this.size * 100;
+							if (100 == notification.progressBar.value){
+								notification.setStatus("Upload Complete");
+							}
+						}
+						//Now start the real work
+						uploader = new ChunkedUploader(fileNameInput.files[0], {url: "/commands/" + result.command_id, progressCB:notificationUpdate.bind(fileNameInput.files[0], notification)});
+						uploader.start();
 					}
-
-					//Now start the real work
-					uploader = new ChunkedUploader(fileNameInput.files[0], {url: "/commands/" + result.command_id, progressCB:notificationUpdate.bind(fileNameInput.files[0], notification)});
-					uploader.start();
 					document.getElementById("notifications").appendChild(notification);
 					uploadFilePopup.parentNode.removeChild(uploadFilePopup);
 				}

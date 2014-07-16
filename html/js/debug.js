@@ -10,6 +10,14 @@ function Notification(options){
 		notification.appendChild(progressBar);
 		notification.progressBar = progressBar;
 	}
+	var notificationStatus = document.createElement("label");
+	if (options.status){
+		notificationStatus.innerHTML = options.status;
+	}
+	notification.appendChild(notificationStatus);
+	notification.setStatus = function(status){
+		notificationStatus.innerHTML = status;
+	}
 	return notification;
 }
 
