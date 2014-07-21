@@ -25,6 +25,9 @@ func (m *Main) serveIMGFile(w http.ResponseWriter, r *http.Request) {
 func (m *Main) serveFontsFile(w http.ResponseWriter, r *http.Request) {
 	m.serveFile(w, r, "fonts/")
 }
+func (m *Main) serveBowerFiles(w http.ResponseWriter, r *http.Request) {
+	m.serveFile(w, r, "bower_components/")
+}
 
 func (m *Main) serveFile(w http.ResponseWriter, r *http.Request, folder string) {
 	vars := mux.Vars(r)
@@ -34,7 +37,12 @@ func (m *Main) serveFile(w http.ResponseWriter, r *http.Request, folder string) 
 }
 
 func (m *Main) homeHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, path.Join(m.path, "index.html"))
+	mode := r.URL.Query().Get("mode")
+	if "polymer" == mode{
+		http.ServeFile(w, r, path.Join(m.path, "index-polymer.html"))
+	}else{
+		http.ServeFile(w, r, path.Join(m.path, "index.html"))
+	}
 }
 
 func (m *Main) authsHandler(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +87,7 @@ func main() {
 	r.HandleFunc(path.Join(config.HtmlPrefix, "css/{file:.*}"), m.serveCSSFile)
 	r.HandleFunc(path.Join(config.HtmlPrefix, "img/{file:.*}"), m.serveIMGFile)
 	r.HandleFunc(path.Join(config.HtmlPrefix, "fonts/{file:.*}"), m.serveFontsFile)
+	r.HandleFunc(path.Join(config.HtmlPrefix, "bower_components/{file:.*}"), m.serveBowerFiles)
 	r.HandleFunc(path.Join(config.HtmlPrefix, "{file}.html"), m.serveHTMLFile)
 
 	http.Handle(config.HtmlPrefix, r)

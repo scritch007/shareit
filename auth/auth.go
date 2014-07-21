@@ -82,6 +82,8 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 			return accessPath, err
 		}
 		if !fileInfo.IsDir() {
+			//Force Access to readOnly
+			accessPath.Access = types.READ
 			baseName := filepath.Base(chroot)
 			if "/" != inPath && baseName != inPath[1:] {
 				types.LOG_ERROR.Println(err)
@@ -122,6 +124,7 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 	if nil != err {
 		if !os.IsNotExist(err) {
 			types.LOG_ERROR.Println("Error accessing to the file " + realPath + err.Error())
+			accessPath.Error = types.ERROR_INVALID_PATH
 			return accessPath, err
 		}
 	} else {

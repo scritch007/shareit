@@ -1,0 +1,93 @@
+<link rel="import" href="bower_components/core-list/core-list.html">
+<link rel="import" href="bower_components/paper-ripple/paper-ripple.html">
+<link rel="import" href="bower_components/paper-focusable/paper-focusable.html">
+
+
+<polymer-element name="scritch007-browseelement"  attributes="file" extends="paper-focusable">
+
+  <template>
+  <style>
+  :host{
+    display:block;
+    position:relative;
+  }
+
+  .item {
+    box-sizing: border-box;
+    height: 80px;
+    border-bottom: 1px solid #ddd;
+    cursor: default;
+    overflow: hidden;
+  }
+  </style>
+  <div class="item">
+    <span class="name">{{file.name}}</span>
+    <span class="timestamp">{{file.mDate}}</span>
+    <span class="subject">Infinite List. {{index}}</span>
+    <div class="body">{{details}}</div>
+    <paper-ripple id="ripple" fit></paper-ripple>
+  </div>
+
+  </template>
+  <script >
+    Polymer("scritch007-browseelement",{ready:function(){
+        this.addEventListener("click", function(e){
+        this.$.ripple.downAction({x: e.x, y: e.y});
+        browse( this.file.path)}.bind(this)
+      );
+    },
+    downAction: function(e) {
+      this.$.ripple.downAction({x: e.x, y: e.y});
+    },
+    upAction: function(e) {
+      this.$.ripple.upAction();
+    }
+  })
+  </script>
+</polymer-element>
+
+<polymer-element name="scritch007-browselist">
+<template>
+  <style>
+    :host{
+      display:block;
+    };
+    core-list {
+      height: 100%;
+    }
+
+    .item {
+      box-sizing: border-box;
+      height: 80px;
+      border-bottom: 1px solid #ddd;
+      cursor: default;
+      overflow: hidden;
+    }
+
+    .selected {
+      background: silver;
+    }
+
+  </style>
+  <core-list id="list" data="{{data}}" height="80">
+    <template repeat="{{ file in data }}">
+      <scritch007-browseelement file="{{file}}"></scritch007-browseelement>
+      <!--<paper-ripple fit></paper-ripple> -->
+    </template>
+  </core-list>
+
+</template>
+<script>
+(function() {
+
+  Polymer('scritch007-browselist', {
+    ready: function() {
+      this.data = [];
+    },
+    tapAction: function(e){
+      browse(current_folder.path + "/" + name);
+    }
+  });
+})();
+</script>
+</polymer-element>

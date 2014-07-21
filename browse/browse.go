@@ -256,13 +256,9 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 	types.LOG_DEBUG.Println("Browsing path ", accessPath.RealPath)
 	counter := 0
 	var result []types.StorageItem
-	if !accessPath.IsDir {
-		//TODO handle this properly
-		counter++
-		result = make([]types.StorageItem, 1)
-		s := types.StorageItem{Name: accessPath.FileInfo.Name(), IsDir: false, ModificationDate: accessPath.FileInfo.ModTime().Unix(), Access: types.READ, Kind: filepath.Ext(accessPath.FileInfo.Name())}
-		result[0] = s
-	} else {
+
+	command.Browser.List.Result.CurrentItem = types.StorageItem{Name: accessPath.FileInfo.Name(), IsDir: accessPath.IsDir, ModificationDate: accessPath.FileInfo.ModTime().Unix(), Access: accessPath.Access, ShareAccess: accessPath.Access, Kind: filepath.Ext(accessPath.FileInfo.Name())}
+	if (accessPath.IsDir) {
 		fileList, err := ioutil.ReadDir(*accessPath.RealPath)
 		if nil != err {
 			types.LOG_ERROR.Println("Failed to read path with error code " + err.Error())
@@ -293,11 +289,12 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 				continue
 			}
 			s.Access = access
+			s.ShareAccess = s.Access
 			result[counter] = s
 			counter++
 		}
 	}
-	command.Browser.List.Results = result[:counter]
+	command.Browser.List.Result.Children = result[:counter]
 	time.Sleep(2)
 	resp <- types.EnumCommandHandlerDone
 }

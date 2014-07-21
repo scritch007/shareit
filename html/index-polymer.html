@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Shareminator</title>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <script src="bower_components/platform/platform.js"></script>
+  <link rel="import" href="scritch007-shareminator.html">
+  <script type="text/javascript" src="js/requests.js"></script>
+  <script src="js/jquery-1.11.1.js"></script>
+  <style>
+  html,body {
+    height: 100%;
+    margin: 0;
+    background-color: #E5E5E5;
+    font-family: 'RobotoDraft', sans-serif;
+  }
+  .container {
+    width: 80%;
+    margin: 50px auto;
+  }
+  @media (min-width: 481px) {
+    #tabs {
+      width: 200px;
+    }
+    .container {
+      width: 400px;
+    }
+  }
+  </style>
+  <script>
+  	var queryString = {};
+  	var current_folder = {"path": ""};
+
+	function getQueryString() {
+	  var result = {}, queryString = location.search.slice(1),
+	      re = /([^&=]+)=([^&]*)/g, m;
+	  while (m = re.exec(queryString)) {
+	    result[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
+	  }
+	  return result;
+	}
+
+  	function init(){
+	  document.addEventListener("polymer-ready", function(){
+  		queryString = getQueryString();
+  		$.getJSON("auths", function(result){
+			//HandleAuthsResult(result);
+			//checkAuth(function(loggedUser){
+			//	if (null != loggedUser){
+			//		//Display the current user name somewhere
+			//	}
+			//	browse("/");
+			//});
+  			browse("/");
+		});
+	  });
+	}
+
+	function browse(path){
+		var command = {
+			name: "browser.list",
+			browser:{
+				list:{
+					"path": path
+				}
+			}
+		};
+		request = {
+			data: command,
+			onSuccess: function(result){
+				current_folder = result.browser.list.result.current_item;
+				current_folder.path = result.browser.list.path;
+				document.getElementById("main_page").setDatas(result);
+			},
+			onError: function(request, status, error){
+				if (401 == request.status){
+					logout();
+					browse(path);
+				}
+			},
+			poll:true
+		}
+		sendCommand(request);
+	}
+  </script>
+</head>
+
+<body unresolved touch-action="auto" onload="init()">
+
+<scritch007-shareminator id="main_page"></scritch007-shareminator>
+
+</body>
+
+</html>

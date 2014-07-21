@@ -1,0 +1,30 @@
+<link rel="import" href="bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="bower_components/paper-input/paper-input.html">
+<polymer-element name="scritch007-login">
+<template>
+	<style>
+		:host{
+			position:relative;
+			display: block;
+		};
+	</style>
+	<paper-dialog heading="Login" transition="paper-dialog-transition-bottom" id="dialog">
+	<div>
+	<paper-input label="Login..."></paper-input>
+	</div>
+	<div>
+	<paper-input label="Password..." type="password"></paper-input>
+	</div>
+	<paper-button label="Cancel" dismissive></paper-button>
+  <paper-button label="Login" affirmative autofocus></paper-button>
+	</paper-dialog>
+</template>
+<script>
+	Polymer("scritch007-login",{
+		toggle: function(){
+			console.log("Toggle Me");
+			this.$.dialog.toggle();
+		}
+	})
+</script>
+</polymer-element>

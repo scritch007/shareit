@@ -1,0 +1,147 @@
+<link rel="import" href="bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="bower_components/core-icon-button/core-icon-button.html">
+<link rel="import" href="bower_components/core-toolbar/core-toolbar.html">
+<link rel="import" href="bower_components/core-icons/iconsets/social-icons.html">
+<link rel="import" href="bower_components/core-header-panel/core-header-panel.html">
+<link rel="import" href="bower_components/core-drawer-panel/core-drawer-panel.html">
+<link rel="import" href="bower_components/core-item/core-item.html">
+<link rel="import" href="scritch007-browselist.html">
+<link rel="import" href="scritch007-login.html">
+
+<polymer-element name="scritch007-shareminator">
+
+  <template>
+    <style>
+      :host {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+      }
+      #core_menu {
+        font-size: 16px;
+        left: 1160px;
+        top: 430px;
+      }
+      #core_toolbar {
+        right: 0px;
+        left: 0px;
+        color: rgb(255, 255, 255);
+        fill: rgb(255, 255, 255);
+        top: 0px;
+        position: absolute;
+        background-color: rgb(79, 125, 201);
+      }
+      body {
+  font-family: sans-serif;
+}
+core-header-panel {
+  background: white;
+}
+core-toolbar {
+  background-color: #03A9F4;
+}
+#navheader {
+  background-color: #56BA89;
+}
+.content {
+  padding: 20px;
+}
+/* drawer is always visible on a wide screen
+   so menu button isn't required */
+core-drawer-panel:not([narrow]) #navicon {
+  display: none;
+}
+    </style>
+    <core-drawer-panel id="drawerPanel">
+
+  <core-header-panel drawer>
+    <core-toolbar id="navheader'">
+      <span>Menu</span>
+    </core-toolbar>
+    <core-menu>
+      <core-item label="Login" id="login_logout" ></core-item>
+      <scritch007-login id="login_dialog"></scritch007-login>
+      <core-item label="Create Account" id="createAccount"></core-item>
+      <core-item label="My Shares"></core-item>
+      <core-item label="Shared with me"></core-item>
+    </core-menu>
+   </core-header-panel>
+
+  <core-header-panel main>
+    <core-toolbar id="mainheader">
+      <paper-icon-button icon="menu" id="navicon"></paper-icon-button>
+      <div id="div" flex>Toolbar</div>
+      <template if="{{ 2 == current_item.access}}">
+        <paper-icon-button icon="add" id="add_button" theme="core-light-theme"></paper-icon-button>
+      </template>
+      <template if="{{0 != current_item.share_access}}">
+        <paper-icon-button icon="social:share" id="share_button" theme="core-light-theme"></paper-icon-button>
+      </template>
+    </core-toolbar>
+      <scritch007-browselist id="list"></scritch007-browselist>
+    </core-header-panel>
+
+</core-drawer-panel>
+  </template>
+
+  <script>
+
+    Polymer('scritch007-shareminator', {
+      data:[],
+      ready: function(){
+        console.log("toto");
+        this.data = [];
+        this.$.navicon.addEventListener('click',
+          function(){this.$.drawerPanel.togglePanel();}.bind(this)
+        );
+        this.$.login_logout.addEventListener("click",
+          function(){
+            this.$.login_dialog.toggle()
+          }.bind(this)
+        );
+      },
+      setDatas:function(result){
+        console.log("Got some data to display");
+        this.$.list.data = [];
+        var prefix = "/";
+        if (current_folder.path !== "/"){
+          prefix = current_folder.path + "/";
+          this.$.list.data.push(
+            { name: "..",
+              path: function(){
+                var path = prefix;
+                if ("/" == path.charAt(path.length - 1)){
+                  path = path.substr(0, path.length - 1);
+                }
+                var split = path.split("/");
+                path = split.slice(0, split.length - 1).join("/");
+                if (path == "")
+                {
+                  path = "/";
+                }
+                return path;
+              }()
+            }
+          );
+        }
+        for (var i=0; i<result.browser.list.result.children.length; i++){
+          var elem = result.browser.list.result.children[i];
+          if (current_folder.path == "/"){
+            elem.path = "/" + elem.name
+          }else{
+            elem.path = current_folder.path + "/" + elem.name;
+          }
+          this.$.list.data.push(elem);
+        }
+        //this.$.content_display.innerHTML = "";
+        //this.$.content_display.innerHTML = JSON.stringify(result);
+        //this.data = result.browser.list.results;
+      }
+    }
+
+  );
+
+  </script>
+
+</polymer-element>  
