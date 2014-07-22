@@ -1,13 +1,13 @@
 
-var authorizationToken = null;
+var user = null;
 
 function sendRequest(obj){
 	request = {
         type:obj.method,
         beforeSend: function (request)
         {
-        	if (null != authorizationToken){
-        		request.setRequestHeader("Authentication", authorizationToken);
+        	if (null != user){
+        		request.setRequestHeader("Authentication", user.authentication_header);
         	}
 
         },

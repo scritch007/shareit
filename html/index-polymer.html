@@ -41,8 +41,52 @@
 	  return result;
 	}
 
+	function login(login, password, loginCB){
+		sendRequest(
+			{
+				url:"auths/DummyAuth/get_challenge",
+				method:"GET",
+				onSuccess: function(result){
+					//TODO at one point we should hash the challenge but never mind for now :)
+					sendRequest(
+						{
+							url: "auths/DummyAuth/auth",
+							method: "POST",
+							data: {
+								"login": login,
+								"challenge_hash": result.challenge + ":" + password,
+								"ref": result.ref
+							},
+							onSuccess: function(result){
+								//Set the Global Header
+								user = result;
+								sessionStorage.current_user = JSON.stringify(user);
+								document.getElementById("main_page").user = user;
+								loginCB(true);
+								browse(current_folder.path);
+							}
+						}
+					);
+				}
+			}
+		);
+	}
+
+	function logout(){
+		var main = document.getElementById("main_page");
+		main.user = null;
+		sessionStorage.current_user = null;
+		user = null;
+		browse(current_folder.path);
+	}
+
   	function init(){
 	  document.addEventListener("polymer-ready", function(){
+	  	//
+	  	var main = document.getElementById("main_page");
+	  	main.setLoginLogOutCBs(login, logout);
+	  	user = JSON.parse(sessionStorage.current_user);
+	  	main.user = user;
   		queryString = getQueryString();
   		$.getJSON("auths", function(result){
 			//HandleAuthsResult(result);

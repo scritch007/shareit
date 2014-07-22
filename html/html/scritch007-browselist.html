@@ -1,46 +1,50 @@
 <link rel="import" href="bower_components/core-list/core-list.html">
 <link rel="import" href="bower_components/paper-ripple/paper-ripple.html">
 <link rel="import" href="bower_components/paper-focusable/paper-focusable.html">
+<link rel="import" href="bower_components/core-icon/core-icon.html">
 
-
-<polymer-element name="scritch007-browseelement"  attributes="file" extends="paper-focusable">
+<polymer-element name="scritch007-browseelement"  attributes="file">
 
   <template>
-  <style>
-  :host{
-    display:block;
-    position:relative;
-  }
+    <style>
+    :host{
+      display:block;
+      position:relative;
+    }
+    :host(:hover){
+      background: silver;
+    }
 
-  .item {
-    box-sizing: border-box;
-    height: 80px;
-    border-bottom: 1px solid #ddd;
-    cursor: default;
-    overflow: hidden;
-  }
-  </style>
-  <div class="item">
-    <span class="name">{{file.name}}</span>
-    <span class="timestamp">{{file.mDate}}</span>
-    <span class="subject">Infinite List. {{index}}</span>
-    <div class="body">{{details}}</div>
-    <paper-ripple id="ripple" fit></paper-ripple>
-  </div>
+
+    .item {
+      box-sizing: border-box;
+      height: 80px;
+      border-bottom: 1px solid #ddd;
+      cursor: default;
+      overflow: hidden;
+    }
+    .item :hover{
+      background: silver;
+    };
+    </style>
+    <div class="item" id="item" on-click="{{browseAction}}">
+      <core-icon icon="{{type}}"></core-icon>
+      <span class="name">{{file.name}}</span>
+      <span class="size">{{file.size}}</span>
+      <span class="kind">{{file.kind}}</span>
+      <span class="mdate">{{file.mDate}}</span>
+    </div>
 
   </template>
   <script >
-    Polymer("scritch007-browseelement",{ready:function(){
-        this.addEventListener("click", function(e){
-        this.$.ripple.downAction({x: e.x, y: e.y});
-        browse( this.file.path)}.bind(this)
-      );
+    Polymer("scritch007-browseelement",{
+      ready: function(){
+        this.type = this.file.isDir?"folder":"drive-file";
     },
-    downAction: function(e) {
-      this.$.ripple.downAction({x: e.x, y: e.y});
-    },
-    upAction: function(e) {
-      this.$.ripple.upAction();
+    browseAction: function(){
+      if(!this.file.isDir)
+        return
+      browse( this.file.path)
     }
   })
   </script>
@@ -83,9 +87,6 @@
   Polymer('scritch007-browselist', {
     ready: function() {
       this.data = [];
-    },
-    tapAction: function(e){
-      browse(current_folder.path + "/" + name);
     }
   });
 })();

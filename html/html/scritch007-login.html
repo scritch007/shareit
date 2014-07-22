@@ -1,30 +1,118 @@
-<link rel="import" href="bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="bower_components/core-overlay/core-overlay.html">
 <link rel="import" href="bower_components/paper-input/paper-input.html">
-<polymer-element name="scritch007-login">
+
+  <polymer-element name="x-dialog" attributes="opened autoCloseDisabled heading">
+  <template>
+    <style>
+
+      :host {
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 13px;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        overflow: hidden;
+        background: white;
+        padding:30px 42px;
+        outline: 1px solid rgba(0,0,0,0.2);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      }
+    </style>
+    <div id="shadow">
+      <paper-shadow z="3" hasPosition></paper-shadow>
+    </div>
+    <core-overlay id="overlay" layered backdrop opened="{{opened}}" autoCloseDisabled="{{autoCloseDisabled}}"  transition="core-transition-center"></core-overlay>
+    <div id="container" layout vertical>
+      <h1>{{heading}}</h1>
+
+      <content select="[main]"></content>
+      <div id="actions" layout horizontal>
+        <content select="[dismissive]"></content>
+        <div flex auto></div>
+        <content select="[affirmative]"></content>
+      </div>
+    </div>
+
+
+  </template>
+  <script>
+
+  Polymer('x-dialog', {
+    ready: function() {
+      this.$.overlay.target = this;
+    },
+
+    toggle: function() {
+      this.$.overlay.toggle();
+    }
+
+  });
+
+  </script>
+  </polymer-element>
+
+<polymer-element name="scritch007-login" unresolved>
 <template>
-	<style>
-		:host{
-			position:relative;
-			display: block;
-		};
-	</style>
-	<paper-dialog heading="Login" transition="paper-dialog-transition-bottom" id="dialog">
-	<div>
-	<paper-input label="Login..."></paper-input>
-	</div>
-	<div>
-	<paper-input label="Password..." type="password"></paper-input>
-	</div>
-	<paper-button label="Cancel" dismissive></paper-button>
-  <paper-button label="Login" affirmative autofocus></paper-button>
-	</paper-dialog>
+
+	<x-dialog heading="Login" transition="paper-dialog-transition-bottom" id="dialog">
+        <style no-shim>
+        .dialog {
+          box-sizing: border-box;
+          -moz-box-sizing: border-box;
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 13px;
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          overflow: hidden;
+          background: white;
+          padding:30px 42px;
+          outline: 1px solid rgba(0,0,0,0.2);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+
+        #dialog {
+          width: 500px;
+        }
+        paper-button[autofocus] {
+          color: #4285f4;
+        }
+      </style>
+    <div main>
+      <div>
+        <paper-input label="Login..." id="login"></paper-input>
+      </div>
+      <div>
+        <paper-input label="Password..." type="password" id="password"></paper-input>
+      </div>
+    </div>
+		<paper-button id="cancel" label="Cancel" dismissive on-click="{{_cancel}}"></paper-button>
+  	<paper-button id="loginBtn" label="Login" affirmative autofocus on-click="{{_go}}"></paper-button>
+	</x-dialog>
 </template>
 <script>
 	Polymer("scritch007-login",{
+    loginCB: null,
+    _cancel: function(){
+      this.$.dialog.toggle();
+    },
+    _go: function(){
+      //TODO
+      if (null != this.loginCB){
+        this.loginCB(this.$.login.value, this.$.password.value, function(user_name, email){ 
+          this.$.dialog.toggle();
+          //Cleanup the login values
+          this.$.login.value = "";
+          this.$.password.value = "";
+       }.bind(this));
+      }
+    },
 		toggle: function(){
-			console.log("Toggle Me");
 			this.$.dialog.toggle();
-		}
+		},
+    setLoginCallback: function(cb){
+      this.loginCB = cb;
+    }
 	})
 </script>
 </polymer-element>

@@ -67,7 +67,9 @@ type Auth struct {
 
 type AuthResult struct {
 	AuthenticationHeader string `json:"authentication_header"`
-	IsAdmin              string `json:"is_admin"`
+	IsAdmin              bool `json:"is_admin"`
+	Email  				string `json:"email"`
+	Login 				string `json:"login"`
 }
 
 func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
@@ -127,7 +129,7 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 		challenge.timer.Stop()
 		delete(auth.challengeMap, refInt)
-		result := AuthResult{AuthenticationHeader: account.Email}
+		result := AuthResult{AuthenticationHeader: account.Email, IsAdmin: account.IsAdmin, Email: account.Email, Login: account.Login}
 		session := types.Session{AuthenticationHeader: result.AuthenticationHeader, UserId: account.Id}
 		err = auth.config.Db.StoreSession(&session)
 		if nil != err {

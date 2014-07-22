@@ -60,11 +60,16 @@ core-drawer-panel:not([narrow]) #navicon {
       <span>Menu</span>
     </core-toolbar>
     <core-menu>
-      <core-item label="Login" id="login_logout" ></core-item>
+      <template if="{{null == user}}">
+        <core-item label="Login" on-click="{{loginOnClick}}"></core-item>
+        <core-item label="Create Account" id="createAccount"></core-item>
+      </template>
       <scritch007-login id="login_dialog"></scritch007-login>
-      <core-item label="Create Account" id="createAccount"></core-item>
-      <core-item label="My Shares"></core-item>
-      <core-item label="Shared with me"></core-item>
+      <template if="{{null != user}}">
+        <core-item label="Logout" on-click="{{logoutOnClick}}" ></core-item>
+        <core-item label="My Shares"></core-item>
+        <core-item label="Shared with me"></core-item>
+      </template>
     </core-menu>
    </core-header-panel>
 
@@ -78,6 +83,7 @@ core-drawer-panel:not([narrow]) #navicon {
       <template if="{{0 != current_item.share_access}}">
         <paper-icon-button icon="social:share" id="share_button" theme="core-light-theme"></paper-icon-button>
       </template>
+      <paper-icon-button icon="refresh" on-click="{{_refresh}}" theme="core-light-theme"></paper-icon-button>
     </core-toolbar>
       <scritch007-browselist id="list"></scritch007-browselist>
     </core-header-panel>
@@ -89,20 +95,25 @@ core-drawer-panel:not([narrow]) #navicon {
 
     Polymer('scritch007-shareminator', {
       data:[],
+      user:null,
+      LogStatus: function(){
+        return null==this.user?"Login":"Logout"
+      },
       ready: function(){
         console.log("toto");
         this.data = [];
         this.$.navicon.addEventListener('click',
           function(){this.$.drawerPanel.togglePanel();}.bind(this)
         );
-        this.$.login_logout.addEventListener("click",
-          function(){
-            this.$.login_dialog.toggle()
-          }.bind(this)
-        );
+      },
+      loginOnClick: function (){
+        this.$.login_dialog.toggle();
+      },
+      logoutOnClick: function(){
+        this._logout();
       },
       setDatas:function(result){
-        console.log("Got some data to display");
+        //console.log("Got some data to display");
         this.$.list.data = [];
         var prefix = "/";
         if (current_folder.path !== "/"){
@@ -121,7 +132,11 @@ core-drawer-panel:not([narrow]) #navicon {
                   path = "/";
                 }
                 return path;
-              }()
+              }(),
+              isDir:true,
+              mDate:"",
+              size:"-",
+              kind:""
             }
           );
         }
@@ -137,6 +152,13 @@ core-drawer-panel:not([narrow]) #navicon {
         //this.$.content_display.innerHTML = "";
         //this.$.content_display.innerHTML = JSON.stringify(result);
         //this.data = result.browser.list.results;
+      },
+      setLoginLogOutCBs: function(login, logout){
+        this.$.login_dialog.setLoginCallback(login);
+        this._logout = logout;
+      },
+      _refresh:function(){
+        browse(current_folder.path);
       }
     }
 
