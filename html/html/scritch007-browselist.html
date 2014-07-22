@@ -38,14 +38,18 @@
   </template>
   <script >
     Polymer("scritch007-browseelement",{
+      file: null,
+      type:"warning",
       ready: function(){
+      },
+      attached: function(){
         this.type = this.file.isDir?"folder":"drive-file";
-    },
-    browseAction: function(){
-      if(!this.file.isDir)
-        return
-      browse( this.file.path)
-    }
+      },
+      browseAction: function(){
+        if(!this.file.isDir)
+          return
+        browse( this.file.path)
+      }
   })
   </script>
 </polymer-element>
@@ -76,7 +80,6 @@
   <core-list id="list" data="{{data}}" height="80">
     <template repeat="{{ file in data }}">
       <scritch007-browseelement file="{{file}}"></scritch007-browseelement>
-      <!--<paper-ripple fit></paper-ripple> -->
     </template>
   </core-list>
 

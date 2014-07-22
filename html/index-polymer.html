@@ -85,7 +85,9 @@
 	  	//
 	  	var main = document.getElementById("main_page");
 	  	main.setLoginLogOutCBs(login, logout);
-	  	user = JSON.parse(sessionStorage.current_user);
+
+	  	if (sessionStorage.current_user)
+	  		user = JSON.parse(sessionStorage.current_user);
 	  	main.user = user;
   		queryString = getQueryString();
   		$.getJSON("auths", function(result){
