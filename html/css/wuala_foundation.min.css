@@ -520,7 +520,8 @@ tr.show-for-medium, tr.show-for-medium-up, tr.hide-for-small {
 td.show-for-medium, td.show-for-medium-up, td.hide-for-small, th.show-for-medium, th.show-for-medium-up, th.hide-for-small {
     display: table-cell !important;
 }
-}@media only screen and (min-width: 80em) {
+}
+@media only screen and (min-width: 80em) {
     .show-for-large, .show-for-large-up {
     display: inherit !important;
 }

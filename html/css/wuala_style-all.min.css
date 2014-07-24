@@ -1533,10 +1533,11 @@ table tbody tr td {
 }
 @media only screen and (min-width:768px) and (max-width:1024px) {
     tr .actions {
-    filter: alpha(Opacity=100);
-    opacity: 1;
+        filter: alpha(Opacity=100);
+        opacity: 1;
+    }
 }
-}@media only screen and (max-width:48em) {
+@media only screen and (max-width:48em) {
     tr .actions {
     filter: alpha(Opacity=100);
     opacity: 1;

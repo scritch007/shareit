@@ -76,9 +76,10 @@ core-drawer-panel:not([narrow]) #navicon {
   <core-header-panel main>
     <core-toolbar id="mainheader">
       <paper-icon-button icon="menu" id="navicon"></paper-icon-button>
-      <div id="div" flex>Toolbar</div>
+      <div id="div" flex>{{current_item.name}}</div>
       <template if="{{ 2 == current_item.access}}">
         <paper-icon-button icon="add" id="add_button" theme="core-light-theme"></paper-icon-button>
+        <paper-icon-button icon="file-upload" on-click="{{ uploadFile }}" theme="core-light-theme"></paper-icon-button>
       </template>
       <template if="{{0 != current_item.share_access}}">
         <paper-icon-button icon="social:share" id="share_button" theme="core-light-theme"></paper-icon-button>
@@ -134,9 +135,9 @@ core-drawer-panel:not([narrow]) #navicon {
                 return path;
               }(),
               isDir:true,
-              mDate:"",
+              mDate:"-",
               size:"-",
-              kind:""
+              kind:"-"
             }
           );
         }
@@ -149,6 +150,8 @@ core-drawer-panel:not([narrow]) #navicon {
           }
           this.$.list.data.push(elem);
         }
+
+        this.current_item = result.browser.list.result.current_item;
         //this.$.content_display.innerHTML = "";
         //this.$.content_display.innerHTML = JSON.stringify(result);
         //this.data = result.browser.list.results;

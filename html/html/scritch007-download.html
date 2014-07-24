@@ -1,0 +1,73 @@
+<link rel="import" href="scritch007-dialog.html">
+<link rel="import" href="bower_components/paper-input/paper-input.html">
+<link rel="import" href="bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="bower_components/core-icons/iconsets/hardware-icons.html">
+
+<polymer-element name="scritch007-download" constructor="ScritchDownload" attributes="download_link chromecast_available">
+<template>
+	<scritch007-dialog heading="Download" transition="paper-dialog-transition-bottom" id="dialog">
+        <style no-shim>
+        .dialog {
+          box-sizing: border-box;
+          -moz-box-sizing: border-box;
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 13px;
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          overflow: hidden;
+          background: white;
+          padding:30px 42px;
+          outline: 1px solid rgba(0,0,0,0.2);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+
+        #dialog {
+          width: 500px;
+        }
+        paper-button[autofocus] {
+          color: #4285f4;
+        }
+      </style>
+    <div main>
+    <paper-input type="text" label="{{ download_link }}" disabled></paper-input>
+    <paper-icon-button icon="content-copy" on-click="{{ copy }}"></paper-icon-button>
+    <paper-icon-button icon="file-download" on-click="{{ download }})"></paper-icon-button>
+    <template if="{{ chromecast_available }}">
+      <paper-icon-button icon="hardware:chromecast" on-click="{{ cast }}"></paper-icon-button>
+    </template>
+    </div>
+		<paper-button id="close" label="Close" affirmative autofocus on-click="{{_close}}"></paper-button>
+	</scritch007-dialog>
+</template>
+<script>
+	Polymer("scritch007-download",{
+    created: function(){
+      this.loginCB = null;
+      this.download_link = null;
+      console.log("created");
+    },
+    ready: function(){
+      console.log("ready");
+    },
+    attached: function(){
+      console.log("attached");
+    },
+    _close: function(){
+      this.$.dialog.toggle();
+      this.parentNode.removeChild(this);
+    },
+		toggle: function(){
+			this.$.dialog.toggle();
+		},
+    download: function(){
+      window.open(this.download_link);
+    },
+    copy: function(){
+      console.log("copy this "+this.download_link );
+    },
+    cast: function(){
+      console.log("cast");
+    }
+	})
+</script>
+</polymer-element>

@@ -6,37 +6,39 @@
   <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
   <script src="bower_components/platform/platform.js"></script>
   <link rel="import" href="scritch007-shareminator.html">
+  <link rel="import" href="scritch007-download.html">
   <script type="text/javascript" src="js/requests.js"></script>
   <script src="js/jquery-1.11.1.js"></script>
   <style>
   html,body {
-    height: 100%;
-    margin: 0;
-    background-color: #E5E5E5;
-    font-family: 'RobotoDraft', sans-serif;
+	height: 100%;
+	margin: 0;
+	background-color: #E5E5E5;
+	font-family: 'RobotoDraft', sans-serif;
   }
   .container {
-    width: 80%;
-    margin: 50px auto;
+	width: 80%;
+	margin: 50px auto;
   }
   @media (min-width: 481px) {
-    #tabs {
-      width: 200px;
-    }
-    .container {
-      width: 400px;
-    }
+	#tabs {
+	  width: 200px;
+	}
+	.container {
+	  width: 400px;
+	}
   }
   </style>
   <script>
-  	var queryString = {};
-  	var current_folder = {"path": ""};
+	var queryString = {};
+	var current_folder = {"path": ""};
+	var chromecast_available = false;
 
 	function getQueryString() {
 	  var result = {}, queryString = location.search.slice(1),
-	      re = /([^&=]+)=([^&]*)/g, m;
+		  re = /([^&=]+)=([^&]*)/g, m;
 	  while (m = re.exec(queryString)) {
-	    result[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
+		result[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
 	  }
 	  return result;
 	}
@@ -80,17 +82,17 @@
 		browse(current_folder.path);
 	}
 
-  	function init(){
+	function init(){
 	  document.addEventListener("polymer-ready", function(){
-	  	//
-	  	var main = document.getElementById("main_page");
-	  	main.setLoginLogOutCBs(login, logout);
+		//
+		var main = document.getElementById("main_page");
+		main.setLoginLogOutCBs(login, logout);
 
-	  	if (sessionStorage.current_user)
-	  		user = JSON.parse(sessionStorage.current_user);
-	  	main.user = user;
-  		queryString = getQueryString();
-  		$.getJSON("auths", function(result){
+		if (sessionStorage.current_user)
+			user = JSON.parse(sessionStorage.current_user);
+		main.user = user;
+		queryString = getQueryString();
+		$.getJSON("auths", function(result){
 			//HandleAuthsResult(result);
 			//checkAuth(function(loggedUser){
 			//	if (null != loggedUser){
@@ -98,7 +100,7 @@
 			//	}
 			//	browse("/");
 			//});
-  			browse("/");
+			browse("/");
 		});
 	  });
 	}
@@ -128,6 +130,28 @@
 			poll:true
 		}
 		sendCommand(request);
+	}
+	function downloadItem(path, name){
+		sendCommand(
+			{
+				data: {
+					name: "browser.download_link",
+					browser:{
+						download_link:{
+							"path": path
+						}
+					}
+				},
+				onSuccess: function(result){
+					var downloadDialog = new ScritchDownload();
+					document.body.appendChild(downloadDialog);
+					var dlink = location.protocol + "//" + location.host + "/downloads/" + result.browser.download_link.download_link.link;
+					downloadDialog.download_link = dlink;
+					downloadDialog.chromecast_available = chromecast_available;
+					downloadDialog.toggle();
+				}
+			}
+		);
 	}
   </script>
 </head>

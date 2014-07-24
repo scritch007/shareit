@@ -2,6 +2,10 @@
 <link rel="import" href="bower_components/paper-ripple/paper-ripple.html">
 <link rel="import" href="bower_components/paper-focusable/paper-focusable.html">
 <link rel="import" href="bower_components/core-icon/core-icon.html">
+<link rel="import" href="bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="bower_components/core-icons/iconsets/social-icons.html">
+
+
 
 <polymer-element name="scritch007-browseelement"  attributes="file">
 
@@ -15,28 +19,100 @@
       background: silver;
     }
 
-
+    
     .item {
       box-sizing: border-box;
       height: 80px;
       border-bottom: 1px solid #ddd;
       cursor: default;
       overflow: hidden;
+      display:table;
+      width: 100%;
     }
     .item :hover{
       background: silver;
-    };
+    }
+    .item .actions {
+      filter: alpha(Opacity=0);
+      opacity: 0;
+      text-align: right;
+      width:200px;
+    }
+    .item:hover .actions {
+      filter: alpha(Opacity=100);
+      opacity: 1;
+    }
+    .item > * {
+      display:table-cell;
+      vertical-align: middle;
+      /*border-right: 1px solid #ddd;*/
+    }
+    @media only screen and (min-width:768px) and (max-width:1024px) {
+      .actions {
+        filter: alpha(Opacity=100);
+        opacity: 1;
+      }
+    }
+    @media only screen and (max-width:48em) {
+      .actions {
+        filter: alpha(Opacity=100);
+        opacity: 1;
+      }
+      .hide-for-small{
+        display: none !important;
+      }
+    }
+
+    @media only screen and (min-width: 48em) {
+      .hide-for-small {
+        display: table-cell !important;
+      }
+    }
+
+    #type{
+      width: 50px;
+    }
+
+    .kind{
+      width: 50px;
+    }
+    .mdate{
+      width: 200px;
+    }
+    .size{
+      width:100px;
+    }
     </style>
     <div class="item" id="item" on-click="{{browseAction}}">
-      <core-icon icon="{{type}}"></core-icon>
-      <span class="name">{{file.name}}</span>
-      <span class="size">{{file.size}}</span>
-      <span class="kind">{{file.kind}}</span>
-      <span class="mdate">{{file.mDate}}</span>
+      <div id="type">
+      <core-icon  icon="{{type}}"></core-icon>
+      </div>
+      <div class="name">{{file.name}}</div>
+      <div class="size">{{size}}</div>
+      <div class="kind hide-for-small">{{file.kind}}</div>
+      <div class="mdate">{{mDateStr}}</div>
+      <div class="actions hide-for-small">
+        <template if="{{ !file.isDir }}">
+          <paper-icon-button icon="file-download" id="add_button" on-click="{{ downloadAction }}"></paper-icon-button>
+        </template>
+        <template if="{{0 != file.share_access}}">
+          <paper-icon-button icon="social:share" id="share_button" on-click="{{ shareAction }}"></paper-icon-button>
+        </template>
+        <template if="{{ 2 == file.access}}">
+          <paper-icon-button icon="delete" id="delete_button" on-click="{{ deleteAction }}"></paper-icon-button>
+        </template>
+      </div>
     </div>
 
   </template>
   <script >
+    function bytesToSize(bytes) {
+       if(bytes == 0) return '0 Byte';
+       var k = 1000;
+       var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+       var i = Math.floor(Math.log(bytes) / Math.log(k));
+       return (bytes / Math.pow(k, i)).toPrecision(3) + ' ' + sizes[i];
+    }
     Polymer("scritch007-browseelement",{
       file: null,
       type:"warning",
@@ -44,11 +120,35 @@
       },
       attached: function(){
         this.type = this.file.isDir?"folder":"drive-file";
+        var temp = new Date(this.file.mDate * 1000)
+        if ("-" == this.file.size){
+          this.mDateStr = "";
+        }else{
+          this.mDateStr = temp.toDateString();
+        }
+        if ("-" == this.file.size){
+          this.size = "";
+        }else{
+          this.size = bytesToSize(this.file.size);
+        }
       },
       browseAction: function(){
-        if(!this.file.isDir)
+        if(!this.file.isDir){
           return
-        browse( this.file.path)
+        }
+        browse( this.file.path);
+      },
+      deleteAction: function(e){
+        e.stopPropagation();
+        deleteItem(this.file.path, this.file.name);
+      },
+      shareAction: function(e){
+        e.stopPropagation();
+        shareItem (this.file.path, this.file.name);
+      },
+      downloadAction: function(e){
+        e.stopPropagation();
+        downloadItem(this.file.path, this.file.name);
       }
   })
   </script>
@@ -86,6 +186,7 @@
 </template>
 <script>
 (function() {
+
 
   Polymer('scritch007-browselist', {
     ready: function() {
