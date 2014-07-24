@@ -257,7 +257,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 	counter := 0
 	var result []types.StorageItem
 
-	command.Browser.List.Result.CurrentItem = types.StorageItem{Name: accessPath.FileInfo.Name(), IsDir: accessPath.IsDir, ModificationDate: accessPath.FileInfo.ModTime().Unix(), Access: accessPath.Access, ShareAccess: accessPath.Access, Kind: filepath.Ext(accessPath.FileInfo.Name())}
+	command.Browser.List.Result.CurrentItem = types.StorageItem{Name: filepath.Base(command.Browser.List.Path), IsDir: accessPath.IsDir, ModificationDate: accessPath.FileInfo.ModTime().Unix(), Access: accessPath.Access, ShareAccess: accessPath.Access, Kind: filepath.Ext(accessPath.FileInfo.Name())}
 	if (accessPath.IsDir) {
 		fileList, err := ioutil.ReadDir(*accessPath.RealPath)
 		if nil != err {
