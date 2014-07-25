@@ -35,12 +35,20 @@
   <script>
 
   Polymer('scritch007-dialog', {
+    ready: function(){
+      console.log("dialog ready");
+    },
     attached: function() {
       this.$.overlay.target = this;
+      console.log("dialog attached")
     },
 
     toggle: function() {
       this.$.overlay.toggle();
+    },
+    close: function(){
+      this.$.overlay.toggle();
+      this.$.overlay.parentNode.removeChild(this.$.overlay);
     }
 
   });

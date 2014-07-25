@@ -8,6 +8,7 @@
   <link rel="import" href="scritch007-shareminator.html">
   <link rel="import" href="scritch007-download.html">
   <script type="text/javascript" src="js/requests.js"></script>
+  <script type="text/javascript" src="bower_components/zeroclipboard/dist/ZeroClipboard.js"></script>
   <script src="js/jquery-1.11.1.js"></script>
   <style>
   html,body {
@@ -33,6 +34,20 @@
 	var queryString = {};
 	var current_folder = {"path": ""};
 	var chromecast_available = false;
+
+	var hasFlash = false;
+	try {
+	  var fo = new ActiveXObject('ShockwaveFlash.ShockwaveFlash');
+	  if (fo) {
+		hasFlash = true;
+	  }
+	} catch (e) {
+	  if (navigator.mimeTypes
+			&& navigator.mimeTypes['application/x-shockwave-flash'] != undefined
+			&& navigator.mimeTypes['application/x-shockwave-flash'].enabledPlugin) {
+		hasFlash = true;
+	  }
+	}
 
 	function getQueryString() {
 	  var result = {}, queryString = location.search.slice(1),
@@ -83,6 +98,9 @@
 	}
 
 	function init(){
+		if (hasFlash){
+			ZeroClipboard.config( { swfPath: "bower_components/zeroclipboard/dist/ZeroClipboard.swf" } );
+		}
 	  document.addEventListener("polymer-ready", function(){
 		//
 		var main = document.getElementById("main_page");
@@ -144,11 +162,15 @@
 				},
 				onSuccess: function(result){
 					var downloadDialog = new ScritchDownload();
-					document.body.appendChild(downloadDialog);
-					var dlink = location.protocol + "//" + location.host + "/downloads/" + result.browser.download_link.download_link.link;
-					downloadDialog.download_link = dlink;
+					var dlink = location.protocol + "//" + location.host + "/downloads/?key=" + result.browser.download_link.download_link.link;
+					downloadDialog.key = result.browser.download_link.download_link.link;
+					downloadDialog.file_name = name;
 					downloadDialog.chromecast_available = chromecast_available;
+					downloadDialog.flash_available = hasFlash;
+					downloadDialog.setDownloadLink(dlink);
+					
 					downloadDialog.toggle();
+					document.body.appendChild(downloadDialog);
 				}
 			}
 		);
