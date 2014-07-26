@@ -95,7 +95,10 @@ ChunkedUploader.prototype = {
         //Ok check the current time for the response and increase the size of the chunk
         var currentTime = new Date().getTime();
         if ((currentTime - this.chunk_time)/1000 < 1){
-            this.chunk_size *= 2;
+            //Limit chunk size
+            if (this.chunk_size < 20*1024*1024){
+                this.chunk_size *= 2;
+            }
         }else{
             this.chunk_size /= 2;
         }
