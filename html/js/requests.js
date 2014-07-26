@@ -9,6 +9,7 @@ function sendRequest(obj){
         	if (null != user){
         		request.setRequestHeader("Authentication", user.authentication_header);
         	}
+        	request.setRequestHeader("Content-Type", "application/json; charset=utf-8")
 
         },
         url: obj.url,

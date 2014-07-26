@@ -58,6 +58,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
+
 	if "GET" == r.Method {
 		// We want to list the commands that have been already answered
 		var userName *string = nil
@@ -149,6 +150,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 			c.save(command)
 		}()
 	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	b, _ := json.Marshal(command)
 	io.WriteString(w, string(b))
 }
