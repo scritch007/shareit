@@ -46,8 +46,8 @@ ChunkedUploader.prototype = {
             chunk = self.file[self.slice_method](self.range_start, self.range_end);
 
             self.upload_request.open('PUT', self.options.url, true);
-            if (null != authorizationToken){
-                self.upload_request.setRequestHeader("Authentication", authorizationToken);
+            if (null != user.authentication_header){
+                self.upload_request.setRequestHeader("Authentication", user.authentication_header);
             }
             self.upload_request.setRequestHeader("Content-Type", 'application/octet-stream');
 

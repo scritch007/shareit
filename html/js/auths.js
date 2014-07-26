@@ -15,11 +15,11 @@ function HandleAuthsResult(result){
 }
 
 function checkAuth(callback){
-	if (undefined != sessionStorage.Authentication){
+	if (undefined != sessionStorage.current_user){
 		//Hide login button and show logout one
 		document.getElementById("logout").style.display="";
 		document.getElementById("login").style.display="none";
-		authorizationToken = sessionStorage.Authentication;
+		user = JSON.parse(sessionStorage.current_user)
 		//Todo ask for who you really are
 		callback(sessionStorage.Authentication);
 	}else{
