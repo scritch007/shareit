@@ -1,0 +1,42 @@
+
+<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="bower_components/core-icon/core-icon.html">
+<link rel="import" href="bower_components/polymer-selector/polymer-selector.html">
+
+<polymer-element name="scritch007-breadcrumbs" attributes="crumbs selected selectedCrumb crumbCallback">
+  <template>
+    <style>
+    @media only screen and (max-width:48em) {
+      :host {
+  		  display: none;
+	    }
+    }
+    @media only screen and (min-width:48em) {
+      :host{
+        display: inline-block;
+      }
+    }
+	  .label {
+	    display: inline-block;
+	    vertical-align: middle;
+	    font-size: 14px;
+	    font-weight: bold;
+	    cursor: pointer;
+	  }
+    </style>
+    <div id="crumbs">
+      <paper-icon-button class="label" value="{{ crumbs.home_value }}" on-click="{{crumbCallback}}" icon="{{crumbs.home_icon}}"></paper-icon-button>
+      <template repeat="{{ crumb in crumbs.list }}">
+      	<core-icon icon="chevron-right"></core-icon>
+        <li class="label"><a on-click="{{ crumbCallback }}" value="{{ crumb.value }}" disabled?="{{ crumb.disabled }}">{{ crumb.label }}</a></li>
+      </template>
+    </div>
+  </template>
+  <script>
+    Polymer('scritch007-breadcrumbs', {
+      created: function() {
+        this.crumbs = [];
+      }
+    });
+  </script>
+</polymer-element>

@@ -89,7 +89,7 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 				types.LOG_ERROR.Println(err)
 				accessPath.Error = types.ERROR_INVALID_PATH
 				return accessPath, err
-			}else if ("/" != inPath){
+			} else if "/" != inPath {
 				chroot = filepath.Dir(chroot)
 			}
 		}
@@ -97,7 +97,7 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 		types.LOG_DEBUG.Println("There's no auth key")
 		if !asUser {
 			access = types.READ_WRITE
-		}else{
+		} else {
 			if !isRoot {
 				//Check if user has access to this path
 				access, err := config.Db.GetAccess(context.Command.User, inPath)

@@ -1,26 +1,6 @@
 <link rel="import" href="scritch007-dialog.html">
-<link rel="import" href="bower_components/paper-icon-button/paper-icon-button.html">
-<link rel="import" href="bower_components/core-icons/iconsets/hardware-icons.html">
 
-
-<polymer-element name="my-paper-icon-button" extends="paper-icon-button" attributes="size">
-  <template>
-    <shadow></shadow>
-  </template>
-  <script>
-    Polymer("my-paper-icon-button",{
-      publish:{
-        size: 24
-      },
-      ready: function(){
-        this.super();
-        this.$.icon.size=this.size;
-      }
-    })
-  </script>
-</polymer-element>
-
-<polymer-element name="scritch007-download" constructor="ScritchDownload" attributes="download_link chromecast_available flash_available key file_name">
+<polymer-element name="scritch007-share" constructor="ScritchShare" attributes="download_link chromecast_available flash_available">
 <template>
 	<scritch007-dialog heading="Download" transition="paper-dialog-transition-bottom" id="dialog" autoCloseDisabled="true">
         <style no-shim>
@@ -44,25 +24,22 @@
         paper-button[autofocus] {
           color: #4285f4;
         }
-        #dialog_main{
-          text-align: center;
-        }
       </style>
     <div main id="dialog_main">
-    <h2>{{ file_name }}</h2>
+    <core-input type="text" value="{{ key }}" readonly></core-input>
     <template if="{{flash_available}}">
-      <my-paper-icon-button icon="content-copy" id="copy_button" on-click="{{ copy }}" size=64></my-paper-icon-button>
+      <paper-icon-button icon="content-copy" id="copy_button" on-click="{{ copy }}"></paper-icon-button>
     </template>
-    <my-paper-icon-button icon="file-download" on-click="{{ download }})" size=64></my-paper-icon-button>
+    <paper-icon-button icon="file-download" on-click="{{ download }})"></paper-icon-button>
     <template if="{{ chromecast_available }}">
-      <my-paper-icon-button icon="hardware:chromecast" on-click="{{ cast }}"></my-paper-icon-button>
+      <paper-icon-button icon="hardware:chromecast" on-click="{{ cast }}"></paper-icon-button>
     </template>
     </div>
 		<paper-button id="close" label="Close" affirmative autofocus on-click="{{_close}}"></paper-button>
 	</scritch007-dialog>
 </template>
 <script>
-	Polymer("scritch007-download",{
+	Polymer("scritch007-share",{
     created: function(){
       this.loginCB = null;
       this.download_link = null;
@@ -77,7 +54,7 @@
     },
     domReady: function(){
       console.log("domReady");
-      this.client = new ZeroClipboard(this.$.dialog.querySelectorAll("my-paper-icon-button")[0]);
+      this.client = new ZeroClipboard(this.$.dialog.querySelectorAll("paper-icon-button")[0]);
       this.client.on("ready", function(){
         this.client.setText(this.download_link);
       }.bind(this));
@@ -98,7 +75,6 @@
     },
     copy: function(){
       console.log("Copy");
-      notify("Download link copied to Clipboard", true);
     },
     setDownloadLink: function(dlink){
       this.download_link = dlink;

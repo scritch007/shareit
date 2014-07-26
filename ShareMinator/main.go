@@ -38,9 +38,9 @@ func (m *Main) serveFile(w http.ResponseWriter, r *http.Request, folder string) 
 
 func (m *Main) homeHandler(w http.ResponseWriter, r *http.Request) {
 	mode := r.URL.Query().Get("mode")
-	if "polymer" == mode{
+	if "polymer" == mode {
 		http.ServeFile(w, r, path.Join(m.path, "index-polymer.html"))
-	}else{
+	} else {
 		http.ServeFile(w, r, path.Join(m.path, "index.html"))
 	}
 }

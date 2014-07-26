@@ -218,9 +218,9 @@ function login(){
 								document.getElementById("logout").style.display="";
 								document.getElementById("login").style.display="none";
 								//Set the Global Header
-								authorizationToken = result.authentication_header;
+								user = result;
+								sessionStorage.current_user = JSON.stringify(user);
 								loginWindow.parentNode.removeChild(loginWindow);
-								sessionStorage.Authentication = authorizationToken;
 								browse(current_folder);
 							}
 						}

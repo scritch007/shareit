@@ -253,12 +253,18 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 		return
 	}
 
+	if !accessPath.Exists {
+		command.State.ErrorCode = types.ERROR_INVALID_PATH
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
 	types.LOG_DEBUG.Println("Browsing path ", accessPath.RealPath)
 	counter := 0
 	var result []types.StorageItem
 
 	command.Browser.List.Result.CurrentItem = types.StorageItem{Name: filepath.Base(command.Browser.List.Path), IsDir: accessPath.IsDir, ModificationDate: accessPath.FileInfo.ModTime().Unix(), Access: accessPath.Access, ShareAccess: accessPath.Access, Kind: filepath.Ext(accessPath.FileInfo.Name())}
-	if (accessPath.IsDir) {
+	if accessPath.IsDir {
 		fileList, err := ioutil.ReadDir(*accessPath.RealPath)
 		if nil != err {
 			types.LOG_ERROR.Println("Failed to read path with error code " + err.Error())

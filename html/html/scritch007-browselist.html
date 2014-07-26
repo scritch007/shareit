@@ -2,7 +2,7 @@
 <link rel="import" href="bower_components/paper-ripple/paper-ripple.html">
 <link rel="import" href="bower_components/paper-focusable/paper-focusable.html">
 <link rel="import" href="bower_components/core-icon/core-icon.html">
-<link rel="import" href="bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="my-paper-icon-button.html">
 <link rel="import" href="bower_components/core-icons/iconsets/social-icons.html">
 
 
@@ -19,7 +19,6 @@
       background: silver;
     }
 
-    
     .item {
       box-sizing: border-box;
       height: 80px;
@@ -61,15 +60,21 @@
       .hide-for-small{
         display: none !important;
       }
+      .show-for-small{
+        display: table-cell !important;
+      }
     }
 
     @media only screen and (min-width: 48em) {
       .hide-for-small {
         display: table-cell !important;
       }
+      .show-for-small{
+        /*display: none !important;*/
+      }
     }
 
-    #type{
+    .elem-icon{
       width: 50px;
     }
 
@@ -82,24 +87,33 @@
     .size{
       width:100px;
     }
+    .hidden {
+      visibility: hidden;
+    }
+    .plusbutton{
+      color: red;
+    }
     </style>
     <div class="item" id="item" on-click="{{browseAction}}">
-      <div id="type">
+      <div class="{{ file.isDir | setHidden }} elem-icon show-for-small ">
+        <my-paper-icon-button icon="add-box" on-click="{{ showInfos }}" size="36px" class="plusbutton"></my-paper-icon-button>
+      </div>
+      <div class="elem-icon">
       <core-icon  icon="{{type}}"></core-icon>
       </div>
       <div class="name">{{file.name}}</div>
       <div class="size">{{size}}</div>
       <div class="kind hide-for-small">{{file.kind}}</div>
-      <div class="mdate">{{mDateStr}}</div>
+      <div class="mdate hide-for-small">{{mDateStr}}</div>
       <div class="actions hide-for-small">
         <template if="{{ !file.isDir }}">
-          <paper-icon-button icon="file-download" id="add_button" on-click="{{ downloadAction }}"></paper-icon-button>
+          <my-paper-icon-button icon="file-download" id="add_button" on-click="{{ downloadAction }}"></my-paper-icon-button>
         </template>
         <template if="{{0 != file.share_access}}">
-          <paper-icon-button icon="social:share" id="share_button" on-click="{{ shareAction }}"></paper-icon-button>
+          <my-paper-icon-button icon="social:share" id="share_button" on-click="{{ shareAction }}"></my-paper-icon-button>
         </template>
         <template if="{{ 2 == file.access}}">
-          <paper-icon-button icon="delete" id="delete_button" on-click="{{ deleteAction }}"></paper-icon-button>
+          <my-paper-icon-button icon="delete" id="delete_button" on-click="{{ deleteAction }}"></my-paper-icon-button>
         </template>
       </div>
     </div>
@@ -132,11 +146,13 @@
           this.size = bytesToSize(this.file.size);
         }
       },
-      browseAction: function(){
+      browseAction: function(e){
         if(!this.file.isDir){
+          this.downloadAction(e);
           return
         }
         browse( this.file.path);
+        e.stopPropagation();
       },
       deleteAction: function(e){
         e.stopPropagation();
@@ -149,12 +165,19 @@
       downloadAction: function(e){
         e.stopPropagation();
         downloadItem(this.file.path, this.file.name);
+      },
+      showInfos: function(e){
+        e.stopPropagation();
+      },
+      setHidden: function(){
+        console.log("Get Class " + this.file.name);
+        return this.file.isDir?"hidden":"";
       }
   })
   </script>
 </polymer-element>
 
-<polymer-element name="scritch007-browselist">
+<polymer-element name="scritch007-browselist" attributes="data backElement">
 <template>
   <style>
     :host{
@@ -175,22 +198,28 @@
     .selected {
       background: silver;
     }
+    @media only screen and (min-width: 48em) {
+      .elemback{
+        display: none !important;
+      }
+    }
 
   </style>
-  <core-list id="list" data="{{data}}" height="80">
+  <template if="{{backElement}}">
+  <scritch007-browseelement file="{{backElement}}" class="elemback"></scritch007-browseelement>
+  </template>
+  <core-list id="browselist-list" data="{{data}}" height="80">
     <template repeat="{{ file in data }}">
       <scritch007-browseelement file="{{file}}"></scritch007-browseelement>
     </template>
   </core-list>
-
 </template>
 <script>
 (function() {
-
-
   Polymer('scritch007-browselist', {
     ready: function() {
       this.data = [];
+      this.backElement = null;
     }
   });
 })();

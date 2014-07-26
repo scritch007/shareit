@@ -29,6 +29,6 @@
     "paper-dialog": "Polymer/paper-dialog#~0.3.4",
     "paper-input": "Polymer/paper-input#~0.3.4",
     "zeroclipboard": "zeroclipboard/zeroclipboard#~2.1.5",
-    "cp-clipboard": "jon301/cp-clipboard#~0.0.1"
+    "paper-toast": "Polymer/paper-toast#~0.3.4"
   }
 }

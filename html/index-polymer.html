@@ -7,6 +7,7 @@
   <script src="bower_components/platform/platform.js"></script>
   <link rel="import" href="scritch007-shareminator.html">
   <link rel="import" href="scritch007-download.html">
+  <link rel="import" href="bower_components/paper-toast/paper-toast.html">
   <script type="text/javascript" src="js/requests.js"></script>
   <script type="text/javascript" src="bower_components/zeroclipboard/dist/ZeroClipboard.js"></script>
   <script src="js/jquery-1.11.1.js"></script>
@@ -175,13 +176,20 @@
 			}
 		);
 	}
+
+	function notify(text, success){
+		var toaster = document.getElementById(success?"notification-toast":"error-toast");
+		toaster.text = text;
+		toaster.show();
+	}
   </script>
 </head>
 
 <body unresolved touch-action="auto" onload="init()">
 
 <scritch007-shareminator id="main_page"></scritch007-shareminator>
-
+<paper-toast id="error-toast" role="alert" text=""></paper-toast>
+<paper-toast id="notification-toast" text=""></paper-toast>
 </body>
 
 </html>

@@ -130,21 +130,21 @@ type StorageItem struct {
 	Size             int64      `json:"size"`
 	Kind             string     `json:"kind"`
 	Access           AccessType `json:"access"`
-	ShareAccess		 AccessType `json:"share_access"`
+	ShareAccess      AccessType `json:"share_access"`
 }
 type CommandsSearchParameters struct {
 	Status *EnumStatus `json:"status,omitempty"`
 }
 
 type BrowserCommandBrowseResult struct {
-	CurrentItem StorageItem `json:"current_item"`//Information on current Path
-	Children []StorageItem `json:"children"`
+	CurrentItem StorageItem   `json:"current_item"` //Information on current Path
+	Children    []StorageItem `json:"children"`
 }
 
 //Browse command structure. This is used for request and response
 type BrowserCommandList struct {
-	Path    string        `json:"path"`
-	Result 	BrowserCommandBrowseResult `json:"result"`
+	Path   string                     `json:"path"`
+	Result BrowserCommandBrowseResult `json:"result"`
 }
 
 //Create Folder command structure. This is used for request and response

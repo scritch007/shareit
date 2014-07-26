@@ -90,8 +90,8 @@ function display(result, add_share_callback){
 			}.bind(path)
 		);
 	}
-	for(var i=0; i<result.browser.list.results.length; i++){
-		var element = result.browser.list.results[i];
+	for(var i=0; i<result.browser.list.result.children.length; i++){
+		var element = result.browser.list.result.children[i];
 		element_path = path + element.name;
 		element.element_path = element_path;
 		var downloadCB = null;
@@ -127,7 +127,7 @@ function display(result, add_share_callback){
 			}.bind(element, element_path);
 		}
 		var shareCB = null;
-		if (null != authorizationToken && add_share_callback){
+		if (null != user && add_share_callback){
 			shareCB = function(){
 				//Check if we've got a sharelink save
 				sendCommand({
@@ -150,7 +150,7 @@ function display(result, add_share_callback){
 		}
 		displayTheme.AddElement(elementListObject, element, element.name, browseCB, downloadCB, deleteCB, shareCB);
 	}
-	if (0 == result.browser.list.results.length){
+	if (0 == result.browser.list.result.children.length){
 		//Display that this is empty
 		displayTheme.AddEmptyList(elementListObject);
 	}
