@@ -19,6 +19,8 @@ TODO
 * Add real database for storing informations
 
 In order to have the polymer theme working you need to install bower.
+   
+   npm install bower
 
 then go to the html folder and run bower there it will retrieve all the dependencies for the theme.
    
