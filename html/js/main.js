@@ -25,8 +25,6 @@ function setPopup(popup){
 }
 
 function init(){
-	if (sessionStorage.current_user)
-		user = JSON.parse(sessionStorage.current_user);
 	queryString = getQueryString();
 	displayTheme = new WualaDisplay();
 	mainWindow = document.getElementById("window_popup_id");
