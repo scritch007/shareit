@@ -18,19 +18,9 @@ TODO
 * Add Chromecast support for Videos and Music
 * Add real database for storing informations
 
-In order to have the polymer theme working you need to install bower.
+The website frontend is now in a separate package git@github.com:scritch007/ShareMinatorFrontend.git
 
-
-```bash
-   npm install bower
-```
-
-then go to the html folder and run bower there it will retrieve all the dependencies for the theme.
-   
-```bash
-   cd $GOPATH/src/github.com/scritch007/shareit/html
-   bower update
-```
+Please edit the configuration file to point to this repository
 
 Create a configuration file using the file provided in the examples folder.
 
