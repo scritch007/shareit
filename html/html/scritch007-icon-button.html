@@ -1,0 +1,17 @@
+<link rel="import" href="bower_components/paper-icon-button/paper-icon-button.html">
+<polymer-element name="scritch007-icon-button" extends="paper-icon-button" attributes="size">
+  <template>
+    <shadow></shadow>
+  </template>
+  <script>
+    Polymer("scritch007-icon-button",{
+      publish:{
+        size: 24
+      },
+      ready: function(){
+        this.super();
+        this.$.icon.size=this.size;
+      }
+    })
+  </script>
+</polymer-element>

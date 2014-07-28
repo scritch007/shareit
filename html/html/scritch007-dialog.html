@@ -45,10 +45,11 @@
 
     toggle: function() {
       this.$.overlay.toggle();
+      console.log("toggle");
     },
     close: function(){
       this.$.overlay.toggle();
-      this.$.overlay.parentNode.removeChild(this.$.overlay);
+      //this.$.overlay.parentNode.removeChild(this.$.overlay);
     }
 
   });

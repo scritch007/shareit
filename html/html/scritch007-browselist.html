@@ -2,7 +2,7 @@
 <link rel="import" href="bower_components/paper-ripple/paper-ripple.html">
 <link rel="import" href="bower_components/paper-focusable/paper-focusable.html">
 <link rel="import" href="bower_components/core-icon/core-icon.html">
-<link rel="import" href="my-paper-icon-button.html">
+<link rel="import" href="scritch007-icon-button.html">
 <link rel="import" href="bower_components/core-icons/iconsets/social-icons.html">
 
 
@@ -11,6 +11,7 @@
 
   <template>
     <style>
+
     :host{
       display:block;
       position:relative;
@@ -27,6 +28,7 @@
       overflow: hidden;
       display:table;
       width: 100%;
+      cursor: pointer;
     }
     .item :hover{
       background: silver;
@@ -95,8 +97,8 @@
     }
     </style>
     <div class="item" id="item" on-click="{{browseAction}}">
-      <div class="{{ file.isDir | setHidden }} elem-icon show-for-small ">
-        <my-paper-icon-button icon="add-box" on-click="{{ showInfos }}" size="36px" class="plusbutton"></my-paper-icon-button>
+      <div class="{{ setHidden }} elem-icon show-for-small ">
+        <scritch007-icon-button icon="add-box" on-click="{{ showInfos }}" size="36px" class="plusbutton"></scritch007-icon-button>
       </div>
       <div class="elem-icon">
       <core-icon  icon="{{type}}"></core-icon>
@@ -107,13 +109,13 @@
       <div class="mdate hide-for-small">{{mDateStr}}</div>
       <div class="actions hide-for-small">
         <template if="{{ !file.isDir }}">
-          <my-paper-icon-button icon="file-download" id="add_button" on-click="{{ downloadAction }}"></my-paper-icon-button>
+          <scritch007-icon-button icon="file-download" id="add_button" on-click="{{ downloadAction }}"></scritch007-icon-button>
         </template>
         <template if="{{0 != file.share_access}}">
-          <my-paper-icon-button icon="social:share" id="share_button" on-click="{{ shareAction }}"></my-paper-icon-button>
+          <scritch007-icon-button icon="social:share" id="share_button" on-click="{{ shareAction }}"></scritch007-icon-button>
         </template>
         <template if="{{ 2 == file.access}}">
-          <my-paper-icon-button icon="delete" id="delete_button" on-click="{{ deleteAction }}"></my-paper-icon-button>
+          <scritch007-icon-button icon="delete" id="delete_button" on-click="{{ deleteAction }}"></scritch007-icon-button>
         </template>
       </div>
     </div>
@@ -134,6 +136,7 @@
       },
       attached: function(){
         this.type = this.file.isDir?"folder":"drive-file";
+        this.setHidden = this.file.isDir?"hidden":"";
         var temp = new Date(this.file.mDate * 1000)
         if ("-" == this.file.size){
           this.mDateStr = "";
@@ -160,18 +163,14 @@
       },
       shareAction: function(e){
         e.stopPropagation();
-        shareItem (this.file.path, this.file.name);
+        shareItem (this.file);
       },
       downloadAction: function(e){
         e.stopPropagation();
-        downloadItem(this.file.path, this.file.name);
+        downloadItem(this.file);
       },
       showInfos: function(e){
         e.stopPropagation();
-      },
-      setHidden: function(){
-        console.log("Get Class " + this.file.name);
-        return this.file.isDir?"hidden":"";
       }
   })
   </script>

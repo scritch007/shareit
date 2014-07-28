@@ -1,8 +1,15 @@
 <link rel="import" href="scritch007-dialog.html">
+<link rel="import" href="scritch007-icon-button.html">
+<link rel="import" href="scritch007-selection.html">
 
-<polymer-element name="scritch007-share" constructor="ScritchShare" attributes="download_link chromecast_available flash_available">
+<link rel="import" href="bower_components/paper-radio-button/paper-radio-button.html">
+<link rel="import" href="bower_components/paper-radio-group/paper-radio-group.html">
+
+
+
+<polymer-element name="scritch007-share" constructor="ScritchShare" attributes="path share_links share_access">
 <template>
-	<scritch007-dialog heading="Download" transition="paper-dialog-transition-bottom" id="dialog" autoCloseDisabled="true">
+	<scritch007-dialog heading="Sharing" transition="paper-dialog-transition-bottom" id="dialog" autoCloseDisabled="true">
         <style no-shim>
         .dialog {
           box-sizing: border-box;
@@ -26,14 +33,12 @@
         }
       </style>
     <div main id="dialog_main">
-    <core-input type="text" value="{{ key }}" readonly></core-input>
-    <template if="{{flash_available}}">
-      <paper-icon-button icon="content-copy" id="copy_button" on-click="{{ copy }}"></paper-icon-button>
-    </template>
-    <paper-icon-button icon="file-download" on-click="{{ download }})"></paper-icon-button>
-    <template if="{{ chromecast_available }}">
-      <paper-icon-button icon="hardware:chromecast" on-click="{{ cast }}"></paper-icon-button>
-    </template>
+      <scritch007-selection items="{{items}}">
+      </scritch007-selection>
+      <scritch007-icon-button icon="add"></scritch007-icon-button>
+      <div class="hidden">
+
+      </div>
     </div>
 		<paper-button id="close" label="Close" affirmative autofocus on-click="{{_close}}"></paper-button>
 	</scritch007-dialog>
@@ -43,6 +48,7 @@
     created: function(){
       this.loginCB = null;
       this.download_link = null;
+      this.items = [];
 
     },
     ready: function(){
@@ -58,27 +64,24 @@
       this.client.on("ready", function(){
         this.client.setText(this.download_link);
       }.bind(this));
+      for (var i = 0; i< this.share_links.length; i++){
+        this.items.push({value: this.share_links[i].key, infos: this.share_links[i]});
+      }
+      this.$.dialog.toggle();
     },
     _close: function(){
       ZeroClipboard.destroy();
       this.$.dialog.close();
       this.parentNode.removeChild(this);
     },
-		toggle: function(){
-			this.$.dialog.toggle();
-		},
-    download: function(){
-      window.open(this.download_link);
+    toggle: function(){
+      //this.$.dialog.toggle();
     },
-    cast: function(){
-      console.log("cast");
+    showNew: function(){
+
     },
-    copy: function(){
-      console.log("Copy");
-    },
-    setDownloadLink: function(dlink){
-      this.download_link = dlink;
-      console.log("copy this "+ this.download_link );
+    deleteShareLink: function(e){
+
     }
 	})
 </script>

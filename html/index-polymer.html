@@ -7,6 +7,7 @@
   <script src="bower_components/platform/platform.js"></script>
   <link rel="import" href="scritch007-shareminator.html">
   <link rel="import" href="scritch007-download.html">
+  <link rel="import" href="scritch007-share.html">
   <link rel="import" href="bower_components/paper-toast/paper-toast.html">
   <script type="text/javascript" src="js/requests.js"></script>
   <script type="text/javascript" src="bower_components/zeroclipboard/dist/ZeroClipboard.js"></script>
@@ -35,6 +36,7 @@
 	var queryString = {};
 	var current_folder = {"path": ""};
 	var chromecast_available = false;
+	var isMobile = false;
 
 	var hasFlash = false;
 	try {
@@ -102,6 +104,7 @@
 		if (hasFlash){
 			ZeroClipboard.config( { swfPath: "bower_components/zeroclipboard/dist/ZeroClipboard.swf" } );
 		}
+
 	  document.addEventListener("polymer-ready", function(){
 		//
 		var main = document.getElementById("main_page");
@@ -150,14 +153,14 @@
 		}
 		sendCommand(request);
 	}
-	function downloadItem(path, name){
+	function downloadItem(item){
 		sendCommand(
 			{
 				data: {
 					name: "browser.download_link",
 					browser:{
 						download_link:{
-							"path": path
+							"path": item.path
 						}
 					}
 				},
@@ -165,16 +168,38 @@
 					var downloadDialog = new ScritchDownload();
 					var dlink = location.protocol + "//" + location.host + "/downloads/?key=" + result.browser.download_link.download_link.link;
 					downloadDialog.key = result.browser.download_link.download_link.link;
-					downloadDialog.file_name = name;
+					downloadDialog.file_name = item.name;
 					downloadDialog.chromecast_available = chromecast_available;
 					downloadDialog.flash_available = hasFlash;
 					downloadDialog.setDownloadLink(dlink);
-					
 					downloadDialog.toggle();
 					document.body.appendChild(downloadDialog);
 				}
 			}
 		);
+	}
+	function shareItem(item){
+		sendCommand({
+			data : {
+				name: "share_link.get",
+				share_link:{
+					get : {
+						path: item.path
+					}
+				}
+			},
+			onSuccess: function(result){
+				var shareDialog = new ScritchShare();
+				shareDialog.share_links = [result.share_link.get.result];
+				shareDialog.path = item.path;
+				shareDialog.share_access = item.share_access;
+				shareDialog.toggle();
+				document.body.appendChild(shareDialog);
+			}.bind(this),
+			onError: function(result){
+				notify("Failed to get Share link information", false)
+			}.bind(this)
+		});
 	}
 
 	function notify(text, success){
