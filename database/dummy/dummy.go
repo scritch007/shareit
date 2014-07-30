@@ -374,11 +374,6 @@ func (d *DummyDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	//TODO check if there is already a sharelink with this name and user
-	_, err = d.getShareLinkFromPath(*shareLink.Path, shareLink.User)
-	if nil == err {
-		err = errors.New("Share link already exists")
-		return err
-	}
 	d.shareLinkMap[*shareLink.Key] = shareLink
 	return d.saveDb()
 }
@@ -420,21 +415,30 @@ func (d *DummyDatabase) ListShareLinks(user string) (shareLinks []*types.ShareLi
 	return shareLinks, err
 }
 
-func (d *DummyDatabase) GetShareLinkFromPath(path string, user string) (shareLink *types.ShareLink, err error) {
+func (d *DummyDatabase) GetShareLinksFromPath(path string, user string) (shareLink []*types.ShareLink, err error) {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
-	return d.getShareLinkFromPath(path, user)
-
+	return d.getShareLinksFromPath(path, user)
 }
 
-func (d *DummyDatabase) getShareLinkFromPath(path string, user string) (shareLink *types.ShareLink, err error) {
-
-	for _, shareLink = range d.shareLinkMap {
+func (d *DummyDatabase) getShareLinksFromPath(path string, user string) (shareLinks []*types.ShareLink, err error) {
+	shareLinks = make([]*types.ShareLink, 0, 10)
+	var count = 0
+	for _, shareLink := range d.shareLinkMap {
 		if *shareLink.Path == path && shareLink.User == user {
-			return shareLink, nil
+			shareLinks = shareLinks[0 : count+1]
+			shareLinks[count] = shareLink
+			count += 1
+			if count == cap(shareLinks) {
+				newSlice := make([]*types.ShareLink, len(shareLinks), 2*cap(shareLinks))
+				for i := range shareLinks {
+					newSlice[i] = shareLinks[i]
+				}
+				shareLinks = newSlice
+			}
 		}
 	}
-	return nil, errors.New("Couldn't find shareLink")
+	return shareLinks, nil
 }
 
 func (d *DummyDatabase) saveDb() error {

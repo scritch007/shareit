@@ -1,7 +1,7 @@
 {
 	"root_prefix": "/home/benjamin/tmp",
 	"private_key": "SomeSecretKeyThatOneShouldDefine",
-	"static_path": "./html",
+	"static_path": "/home/benjamin/dev/ShareMinatorFrontend",
 	"web_port": "8080",
 	"auth":[
 		{

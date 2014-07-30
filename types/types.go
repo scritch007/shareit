@@ -34,7 +34,7 @@ type DatabaseInterface interface {
 	SaveShareLink(shareLink *ShareLink) (err error)
 	GetShareLink(key string) (shareLink *ShareLink, err error)
 	ListShareLinks(user string) (shareLinks []*ShareLink, err error) //List the sharelink user created
-	GetShareLinkFromPath(path string, user string) (shareLink *ShareLink, err error)
+	GetShareLinksFromPath(path string, user string) (shareLinks []*ShareLink, err error)
 	RemoveShareLink(key string) (err error)
 }
 
@@ -176,6 +176,7 @@ const (
 )
 
 type ShareLink struct {
+	Name     *string           `json:"name,omitempty"`      //Name used for displaying the share link if multiple share links available.
 	Path     *string           `json:"path,omitempty"`      //Can be empty only if ShareLinkKey is provided
 	Key      *string           `json:"key,omitempty"`       //Can be empty only for a creation or on a Get
 	User     string            `json:"user"`                //This will only be set by server. This is the user that issued the share link
@@ -193,15 +194,15 @@ type ShareLinkUpdate struct {
 }
 
 type ShareLinkGet struct {
-	Path   string     `json:"path"`
-	Result *ShareLink `json:"result"`
+	Path    string       `json:"path"`
+	Results []*ShareLink `json:"results"`
 }
 
 type ShareLinkCommand struct {
 	Create *ShareLinkCreate `json:"create,omitempty"`
 	Update *ShareLinkUpdate `json:"update,omitempty"` //Key field needs to be provided
 	Delete *string          `json:"delete,omitempty"` //Just pass the key and we'll be find
-	Get    *ShareLinkGet    `json:"get,omitempty"`    //Get a ShareLink from a path. This will only return if users is owner
+	List   *ShareLinkGet    `json:"list,omitempty"`   //List ShareLinks from a path for the current user. This will only return if users is owner
 }
 
 type BrowserCommand struct {
@@ -243,7 +244,7 @@ const (
 	EnumShareLinkCreate     EnumAction = "share_link.create"
 	EnumShareLinkUpdate     EnumAction = "share_link.update"
 	EnumShareLinkDelete     EnumAction = "share_link.delete"
-	EnumShareLinkGet        EnumAction = "share_link.get"
+	EnumShareLinkList       EnumAction = "share_link.list"
 )
 
 type EnumCommandHandlerStatus int

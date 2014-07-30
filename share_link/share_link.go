@@ -70,11 +70,11 @@ func (s *ShareLinkHandler) create(context *types.CommandContext, resp chan<- typ
 
 func (s *ShareLinkHandler) get(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
 	command := context.Command
-	shareLink, err := s.config.Db.GetShareLinkFromPath(command.ShareLink.Get.Path, *command.User)
+	shareLinks, err := s.config.Db.GetShareLinksFromPath(command.ShareLink.List.Path, *command.User)
 	if nil != err {
 		resp <- types.EnumCommandHandlerError
 	}
-	command.ShareLink.Get.Result = shareLink
+	command.ShareLink.List.Results = shareLinks
 	resp <- types.EnumCommandHandlerDone
 }
 
@@ -90,7 +90,7 @@ func (s *ShareLinkHandler) Handle(context *types.CommandContext, resp chan<- typ
 
 	} else if command.Name == types.EnumShareLinkDelete {
 
-	} else if command.Name == types.EnumShareLinkGet {
+	} else if command.Name == types.EnumShareLinkList {
 		go s.get(context, resp)
 	} else {
 		return &types.HttpError{errors.New("Unknown share_link command"), http.StatusBadRequest}
