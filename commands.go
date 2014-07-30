@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"archive/zip"
 )
 
 //ServeContent(w ResponseWriter, req *Request, name string, modtime time.Time, content io.ReadSeeker)
@@ -311,8 +312,45 @@ func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
 	//Get the realpath depending on the configuration and the sharelink or direct download
 	if nil == err {
 		types.LOG_DEBUG.Println("Serving file ", *link.RealPath)
-		w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(*link.RealPath))
-		http.ServeFile(w, r, *link.RealPath)
+		fileInfo, err := os.Lstat(*link.RealPath)
+		if nil != err{
+			http.Error(w, "Download link doesn't point to a valid path", http.StatusNotFound)
+			return
+		}
+		if fileInfo.IsDir(){
+			zipFileName := fileInfo.Name() + ".zip"
+			w.Header().Set("Content-Type", "application/zip")
+			w.Header().Set("Content-Disposition", `attachment; filename="`+zipFileName+`"`)
+			zw := zip.NewWriter(w)
+			defer zw.Close()
+			// Walk directory.
+			filepath.Walk(*link.RealPath, func(path string, info os.FileInfo, err error) error {
+				if info.IsDir() {
+					return nil
+				}
+				// Remove base path, convert to forward slash.
+				zipPath := path[len(*link.RealPath):]
+				zipPath = strings.TrimLeft(strings.Replace(zipPath, `\`, "/", -1), `/`)
+				ze, err := zw.Create(zipPath)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Cannot create zip entry <%s>: %s\n", zipPath, err)
+					return err
+				}
+				file, err := os.Open(path)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Cannot open file <%s>: %s\n", path, err)
+					return err
+				}
+				defer file.Close()
+				io.Copy(ze, file)
+				return nil
+			})
+
+		}else{
+			w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(*link.RealPath))
+			http.ServeFile(w, r, *link.RealPath)
+		}
+
 	} else {
 		http.Error(w, "Download link is unavailable. Try renewing link", http.StatusNotFound)
 	}
