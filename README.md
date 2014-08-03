@@ -31,3 +31,9 @@ then run the following command
 ```
 
 <a href="https://godoc.org/github.com/scritch007/shareit"><img src="https://godoc.org/github.com/scritch007/shareit?status.png" alt="GoDoc"></a>
+
+
+Credits
+=======
+
+

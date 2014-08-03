@@ -163,7 +163,9 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errMessage, http.StatusInternalServerError)
 			return
 		}
-		io.WriteString(w, fmt.Sprintf("{\"resp\":\"Welcome Mr %s\", \"is_admin\":%b}", account.Login, account.IsAdmin))
+		result := AuthResult{AuthenticationHeader: account.Email, IsAdmin: account.IsAdmin, Email: account.Email, Login: account.Login}
+		b, _ := json.Marshal(result)
+		io.WriteString(w, string(b))
 	case "validate":
 		//TODO
 	case "get_challenge":
