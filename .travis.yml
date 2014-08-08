@@ -15,4 +15,6 @@ script:
 - go build github.com/scritch007/shareit/ShareMinator
 after_success:
 - ssh $login@$server mv /home/$login/ShareMinator /home/$login/ShareMinator.save
+- ssh $login@$server pkill ShareMinator
 - scp ShareMinator $login@$server:/home/$login/ShareMinator
+- ssh -n -f $login@$server exec "sh -c 'nohup ./ShareMinator -c=./examples/config.json > /dev/null 2>&1 &'"
