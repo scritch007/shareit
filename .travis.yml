@@ -4,6 +4,8 @@ before_install:
   -in secretkey.enc -out secretkey -d
 - mkdir -p ~/.ssh/
 - cp secretkey ~/.ssh/id_rsa
+- chmod 600 ~/.ssh/id_rsa
+- echo -e "Host $server\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
 env:
   global:
   - secure: jjP6dO8JSkKMykYPwUdEH7FsbBGlHb1QHzoifOhHhkPr509ahvkQAfvWgKfnJPhe4ZvkLD+nmuoAErtTS5+/ACFnWRtMedd6L8tJyMk4Z/Y47YWgwQSLnOSJY1XgiW4E6rxxYeGXqcXfX488vQkJOQM/PeXZdyF3xUOrvTpGyGI=
