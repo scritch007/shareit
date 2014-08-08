@@ -1,1 +1,14 @@
 language: go
+before_install:
+- openssl aes-256-cbc -K $encrypted_a4aae917fec2_key -iv $encrypted_a4aae917fec2_iv
+  -in secretkey.enc -out secretkey -d
+- mkdir -p ~/.ssh/
+- cp secretkey ~/.ssh/id_rsa
+env:
+  global:
+  - secure: jjP6dO8JSkKMykYPwUdEH7FsbBGlHb1QHzoifOhHhkPr509ahvkQAfvWgKfnJPhe4ZvkLD+nmuoAErtTS5+/ACFnWRtMedd6L8tJyMk4Z/Y47YWgwQSLnOSJY1XgiW4E6rxxYeGXqcXfX488vQkJOQM/PeXZdyF3xUOrvTpGyGI=
+  - secure: aG1i6kTVYj76TXOr9CpGb7bBjEGltbILqQjR59eNm++Z7Neq7ina5awevU86KrDz0QtEz373osKk4k6b4tTRI38/KoT7avnw+wXgwxP4YcCQ8np/jMGgex2U6yNW3MDu1uszTGzS/cQOMVr1qmqb5rRGoIUoXO/2qh4mwk3fJIQ=
+
+after_success:
+- ssh $login@$server mv /home/$login/ShareMinator /home/$login/ShareMinator.save
+- scp $GOPATH/bin/ShareMinator $login@$server:/home/$login
