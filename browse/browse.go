@@ -2,9 +2,10 @@ package browse
 
 import (
 	"errors"
+	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"github.com/scritch007/shareit/auth"
-	"github.com/scritch007/shareit/tools"
 	"github.com/scritch007/shareit/types"
+	"github.com/scritch007/go-tools"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -25,18 +26,20 @@ func NewBrowseHandler(config *types.Configuration) (handler *BrowseHandler) {
 
 func (b *BrowseHandler) Handle(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) *types.HttpError {
 	command := context.Command
-	if nil == command.Browser {
+	tools.LOG_DEBUG.Println("Got this command ", command.ApiCommand.Name)
+	if nil == command.ApiCommand.Browser {
 		return &types.HttpError{Err: errors.New("Missing browse command body"), Status: http.StatusBadRequest}
 	}
-	if command.Name == types.EnumBrowserBrowse {
+	tools.LOG_DEBUG.Println("Got this command ", command.ApiCommand.Name)
+	if command.ApiCommand.Name == api.EnumBrowserList {
 		go b.browseCommand(context, resp)
-	} else if command.Name == types.EnumBrowserCreateFolder {
+	} else if command.ApiCommand.Name == api.EnumBrowserCreateFolder {
 		go b.createFolderCommand(context, resp)
-	} else if command.Name == types.EnumBrowserDeleteItem {
+	} else if command.ApiCommand.Name == api.EnumBrowserDelete {
 		go b.deleteItemCommand(context, resp)
-	} else if command.Name == types.EnumBrowserDownloadLink {
+	} else if command.ApiCommand.Name == api.EnumBrowserDownloadLink {
 		go b.downloadLink(context, resp)
-	} else if command.Name == types.EnumBrowserUploadFile {
+	} else if command.ApiCommand.Name == api.EnumBrowserUploadFile {
 		go b.uploadFile(context, resp)
 	} else {
 		return &types.HttpError{Err: errors.New("Unknown Browse command"), Status: http.StatusBadRequest}
@@ -45,75 +48,74 @@ func (b *BrowseHandler) Handle(context *types.CommandContext, resp chan<- types.
 }
 
 func (b *BrowseHandler) downloadLink(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
-	command := context.Command
-	if nil == command.Browser.GenerateDownloadLink {
-		types.LOG_DEBUG.Println("Missing input configuration")
-		command.State.ErrorCode = types.ERROR_MISSING_COMMAND_BODY
+	command := context.Command.ApiCommand
+	if nil == command.Browser.DownloadLink {
+		tools.LOG_DEBUG.Println("Missing input configuration")
+		command.State.ErrorCode = api.ERROR_MISSING_COMMAND_BODY
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
-	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.GenerateDownloadLink.Path, false)
+	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.DownloadLink.Input.Path, false)
 	if !accessPath.Exists {
-		types.LOG_DEBUG.Println("Couldn't find this path")
-		command.State.ErrorCode = types.ERROR_INVALID_PATH
+		tools.LOG_DEBUG.Println("Couldn't find this path")
+		command.State.ErrorCode = api.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
 	file_path := accessPath.RealPath
 	result := tools.ComputeHmac256(*file_path, b.config.PrivateKey)
-	dLink := types.DownloadLink{Link: result, Path: command.Browser.GenerateDownloadLink.Path, RealPath: file_path}
+	dLink := types.DownloadLink{Link: result, Path: command.Browser.DownloadLink.Input.Path, RealPath: file_path}
 	b.config.Db.AddDownloadLink(&dLink)
-	command.Browser.GenerateDownloadLink.Result.Link = url.QueryEscape(result)
-	command.Browser.GenerateDownloadLink.Result.Path = command.Browser.GenerateDownloadLink.Path
+	command.Browser.DownloadLink.Output.DownloadLink = url.QueryEscape(result)
 	resp <- types.EnumCommandHandlerDone
 }
 
 //Handle removal of an item
 func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
-	command := context.Command
+	command := context.Command.ApiCommand
 	if nil == command.Browser.Delete {
-		types.LOG_DEBUG.Println("Missing input configuration")
-		command.State.ErrorCode = types.ERROR_MISSING_COMMAND_BODY
+		tools.LOG_DEBUG.Println("Missing input configuration")
+		command.State.ErrorCode = api.ERROR_MISSING_COMMAND_BODY
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 	asUser := nil == context.Account || !context.Account.IsAdmin
 
-	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.Delete.Path, asUser)
+	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.Delete.Input.Path, asUser)
 
-	if types.ERROR_NO_ERROR != accessPath.Error {
+	if api.ERROR_NO_ERROR != accessPath.Error {
 		command.State.ErrorCode = accessPath.Error
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
-	if types.READ_WRITE != accessPath.Access {
-		command.State.ErrorCode = types.ERROR_NOT_ALLOWED
+	if api.READ_WRITE != accessPath.Access {
+		command.State.ErrorCode = api.ERROR_NOT_ALLOWED
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
 	item_path := accessPath.RealPath
 	if nil == item_path {
-		command.State.ErrorCode = types.ERROR_INVALID_PATH
+		command.State.ErrorCode = api.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
 	if !accessPath.Exists {
-		command.State.ErrorCode = types.ERROR_INVALID_PATH
+		command.State.ErrorCode = api.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 	if accessPath.IsDir {
-		types.LOG_DEBUG.Println("Item is a directory")
+		tools.LOG_DEBUG.Println("Item is a directory")
 		//We are going to make something nice with a progress
 		fileList, err := ioutil.ReadDir(*item_path)
 		if nil != err {
-			types.LOG_DEBUG.Println("Couldn't list directory")
-			command.State.ErrorCode = types.ERROR_FILE_SYSTEM
+			tools.LOG_DEBUG.Println("Couldn't list directory")
+			command.State.ErrorCode = api.ERROR_FILE_SYSTEM
 			resp <- types.EnumCommandHandlerError
 			return
 		}
@@ -121,11 +123,11 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 		success := types.EnumCommandHandlerDone
 		for i, element := range fileList {
 			element_path := path.Join(*item_path, element.Name())
-			types.LOG_DEBUG.Println("Trying to remove " + element_path)
+			tools.LOG_DEBUG.Println("Trying to remove " + element_path)
 			err = os.RemoveAll(element_path)
 			if nil != err {
 				success = types.EnumCommandHandlerError
-				command.State.ErrorCode = types.ERROR_FILE_SYSTEM
+				command.State.ErrorCode = api.ERROR_FILE_SYSTEM
 			}
 			command.State.Progress = i * 100 / nbElements
 		}
@@ -146,37 +148,37 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 
 //Handle the creation of a folder
 func (b *BrowseHandler) createFolderCommand(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
-	command := context.Command
+	command := context.Command.ApiCommand
 	if nil == command.Browser.CreateFolder {
-		types.LOG_ERROR.Println("Missing configuration")
-		command.State.ErrorCode = types.ERROR_MISSING_COMMAND_BODY
+		tools.LOG_ERROR.Println("Missing configuration")
+		command.State.ErrorCode = api.ERROR_MISSING_COMMAND_BODY
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 	asUser := nil == context.Account || !context.Account.IsAdmin
-	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.CreateFolder.Path, asUser)
+	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.CreateFolder.Input.Path, asUser)
 
-	if types.ERROR_NO_ERROR != accessPath.Error {
+	if api.ERROR_NO_ERROR != accessPath.Error {
 		command.State.ErrorCode = accessPath.Error
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
-	if types.READ_WRITE != accessPath.Access {
-		command.State.ErrorCode = types.ERROR_NOT_ALLOWED
+	if api.READ_WRITE != accessPath.Access {
+		command.State.ErrorCode = api.ERROR_NOT_ALLOWED
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
 	item_path := accessPath.RealPath
 	if nil == item_path {
-		command.State.ErrorCode = types.ERROR_INVALID_PATH
+		command.State.ErrorCode = api.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
 	if accessPath.Exists {
-		command.State.ErrorCode = types.ERROR_INVALID_PATH
+		command.State.ErrorCode = api.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
 	}
@@ -190,19 +192,19 @@ func (b *BrowseHandler) createFolderCommand(context *types.CommandContext, resp 
 }
 
 func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
-	command := context.Command
+	command := context.Command.ApiCommand
 	if nil == command.Browser.UploadFile {
-		types.LOG_ERROR.Println("Missing configuration")
-		command.State.ErrorCode = types.ERROR_MISSING_COMMAND_BODY
+		tools.LOG_ERROR.Println("Missing configuration")
+		command.State.ErrorCode = api.ERROR_MISSING_COMMAND_BODY
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
 	asUser := nil == context.Account || !context.Account.IsAdmin
 
-	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.UploadFile.Path, asUser)
+	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.UploadFile.Input.Path, asUser)
 
-	if types.ERROR_NO_ERROR != accessPath.Error {
+	if api.ERROR_NO_ERROR != accessPath.Error {
 		command.State.ErrorCode = accessPath.Error
 		resp <- types.EnumCommandHandlerError
 		return
@@ -210,21 +212,21 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 
 	item_path := accessPath.RealPath
 	if nil == item_path {
-		command.State.ErrorCode = types.ERROR_INVALID_PATH
+		command.State.ErrorCode = api.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
 	//If write access has been removed, then we should respond false!!
-	if types.READ_WRITE != accessPath.Access {
-		command.State.ErrorCode = types.ERROR_NOT_ALLOWED
+	if api.READ_WRITE != accessPath.Access {
+		command.State.ErrorCode = api.ERROR_NOT_ALLOWED
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
 	if accessPath.Exists {
-		types.LOG_DEBUG.Println("Truncating file")
-		os.Truncate(*item_path, command.Browser.UploadFile.Size)
+		tools.LOG_DEBUG.Println("Truncating file")
+		os.Truncate(*item_path, command.Browser.UploadFile.Input.Size)
 		return
 	}
 	resp <- types.EnumCommandHandlerPostponed
@@ -232,10 +234,10 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 
 //Handle the browsing of a folder
 func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
-	command := context.Command
-	if nil == command.Browser.List {
-		types.LOG_ERROR.Println("Missing input configuration")
-		command.State.ErrorCode = types.ERROR_MISSING_COMMAND_BODY
+	command := context.Command.ApiCommand
+	if nil == command.Browser.List || 0 == len(command.Browser.List.Input.Path){
+		tools.LOG_ERROR.Println("Missing input configuration")
+		command.State.ErrorCode = api.ERROR_MISSING_COMMAND_BODY
 		resp <- types.EnumCommandHandlerError
 		return
 	}
@@ -244,45 +246,45 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 		//TODO checkt he asUser request header
 		asUser = false
 	}
+	tools.LOG_DEBUG.Println("Retrieving access");
+	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.List.Input.Path, asUser)
 
-	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.List.Path, asUser)
-
-	if types.ERROR_NO_ERROR != accessPath.Error {
+	if api.ERROR_NO_ERROR != accessPath.Error {
 		command.State.ErrorCode = accessPath.Error
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
 	if !accessPath.Exists {
-		command.State.ErrorCode = types.ERROR_INVALID_PATH
+		command.State.ErrorCode = api.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
 	}
 
-	types.LOG_DEBUG.Println("Browsing path ", accessPath.RealPath)
+	tools.LOG_DEBUG.Println("Browsing path ", accessPath.RealPath)
 	counter := 0
-	var result []types.StorageItem
+	var result []api.StorageItem
 
-	command.Browser.List.Result.CurrentItem = types.StorageItem{Name: filepath.Base(command.Browser.List.Path), IsDir: accessPath.IsDir, ModificationDate: accessPath.FileInfo.ModTime().Unix(), Access: accessPath.Access, ShareAccess: accessPath.Access, Kind: filepath.Ext(accessPath.FileInfo.Name())}
+	command.Browser.List.Output.CurrentItem = api.StorageItem{Name: filepath.Base(command.Browser.List.Input.Path), IsDir: accessPath.IsDir, MDate: accessPath.FileInfo.ModTime().Unix(), Access: accessPath.Access, ShareAccess: accessPath.Access, Kind: filepath.Ext(accessPath.FileInfo.Name())}
 	if accessPath.IsDir {
 		fileList, err := ioutil.ReadDir(*accessPath.RealPath)
 		if nil != err {
-			types.LOG_ERROR.Println("Failed to read path with error code " + err.Error())
+			tools.LOG_ERROR.Println("Failed to read path with error code " + err.Error())
 			resp <- types.EnumCommandHandlerError
 		}
-		result = make([]types.StorageItem, len(fileList))
+		result = make([]api.StorageItem, len(fileList))
 
-		var access types.AccessType
+		var access api.AccessType
 		for _, file := range fileList {
-			s := types.StorageItem{Name: file.Name(), IsDir: file.IsDir(), ModificationDate: file.ModTime().Unix()}
+			s := api.StorageItem{Name: file.Name(), IsDir: file.IsDir(), MDate: file.ModTime().Unix()}
 			if !file.IsDir() {
 				s.Size = file.Size()
 				s.Kind = filepath.Ext(file.Name())
 				access = accessPath.Access
 			} else {
 				s.Kind = "folder"
-				accessPath2, _ := auth.GetAccessAndPath(b.config, context, path.Join(command.Browser.List.Path, s.Name), asUser)
-				if types.ERROR_NO_ERROR != accessPath2.Error {
+				accessPath2, _ := auth.GetAccessAndPath(b.config, context, path.Join(command.Browser.List.Input.Path, s.Name), asUser)
+				if api.ERROR_NO_ERROR != accessPath2.Error {
 					err = errors.New("Couldn't get infos about this")
 				} else {
 					err = nil
@@ -291,7 +293,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 			}
 			if nil != err {
 				continue
-			} else if types.NONE == access && asUser {
+			} else if api.NONE == access && asUser {
 				continue
 			}
 			s.Access = access
@@ -300,25 +302,25 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 			counter++
 		}
 	}
-	command.Browser.List.Result.Children = result[:counter]
+	command.Browser.List.Output.Children = result[:counter]
 	time.Sleep(2)
 	resp <- types.EnumCommandHandlerDone
 }
 
 func (b *BrowseHandler) GetUploadPath(context *types.CommandContext) (path *string, size int64, hErr *types.HttpError) {
-	command := context.Command
-	if types.EnumBrowserUploadFile != command.Name {
+	command := context.Command.ApiCommand
+	if api.EnumBrowserUploadFile != command.Name {
 		return nil, 0, &types.HttpError{errors.New("Not Allowed for this command type"), http.StatusBadRequest}
 	}
 
-	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.UploadFile.Path, false)
+	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.UploadFile.Input.Path, false)
 
-	if types.ERROR_NO_ERROR != accessPath.Error {
+	if api.ERROR_NO_ERROR != accessPath.Error {
 		return nil, 0, &types.HttpError{errors.New("Access Error"), http.StatusUnauthorized}
 	}
-	if types.READ_WRITE != accessPath.Access {
+	if api.READ_WRITE != accessPath.Access {
 		return nil, 0, &types.HttpError{errors.New("Access Error"), http.StatusUnauthorized}
 	}
 
-	return accessPath.RealPath, command.Browser.UploadFile.Size, nil
+	return accessPath.RealPath, command.Browser.UploadFile.Input.Size, nil
 }

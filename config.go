@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"github.com/scritch007/shareit/auth"
 	"github.com/scritch007/shareit/auth/dummy"
 	"github.com/scritch007/shareit/database"
@@ -28,8 +29,8 @@ type rootUserConfig struct {
 }
 
 type access struct {
-	Name   string           `json:"name"`
-	Access types.AccessType `json:"access"`
+	Name   string         `json:"name"`
+	Access api.AccessType `json:"access"`
 }
 
 type userAccesses struct {

@@ -9,15 +9,17 @@ import (
 	"net/http"
 	"path/filepath"
 	//	"strconv"
+	"archive/zip"
 	"errors"
+	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"github.com/scritch007/shareit/browse"
 	"github.com/scritch007/shareit/share_link"
 	"github.com/scritch007/shareit/types"
+	"github.com/scritch007/go-tools"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-	"archive/zip"
 )
 
 //ServeContent(w ResponseWriter, req *Request, name string, modtime time.Time, content io.ReadSeeker)
@@ -41,7 +43,7 @@ func NewCommandHandler(config *types.Configuration) (c *CommandHandler) {
 	return c
 }
 
-func (c *CommandHandler) getHandler(command *types.Command) types.CommandHandler {
+func (c *CommandHandler) getHandler(command *api.Command) types.CommandHandler {
 	if strings.Contains(string(command.Name), "browser.") {
 		return c.browser
 	} else if strings.Contains(string(command.Name), share_link.COMMAND_PREFIX) {
@@ -69,7 +71,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		commands, _, err := c.config.Db.ListCommands(userName, 0, -1, nil)
 		if nil != err {
 			errMessage := fmt.Sprintf("Invalid Input: %s", err)
-			types.LOG_ERROR.Println(errMessage)
+			tools.LOG_ERROR.Println(errMessage)
 			http.Error(w, errMessage, http.StatusInternalServerError)
 			return
 		}
@@ -78,20 +80,23 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Extract the POST body
-	command := new(types.Command)
+	command := new(api.Command)
 
 	input, err := ioutil.ReadAll(r.Body)
 	if nil != err {
 		errMessage := fmt.Sprintf("1 Failed with error code: %s", err)
-		types.LOG_ERROR.Println(errMessage)
+		tools.LOG_ERROR.Println(errMessage)
 		http.Error(w, errMessage, http.StatusBadRequest)
 		return
 	}
 	err = json.Unmarshal(input, command)
+
+	backendCommand := new(types.Command)
+	backendCommand.ApiCommand = command
 	if nil != user {
-		command.User = &user.Id //Store current user
+		backendCommand.User = &user.Id //Store current user
 	} else {
-		command.User = nil
+		backendCommand.User = nil
 	}
 	if nil != err {
 		//TODO Set erro Code
@@ -99,8 +104,8 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	channel := make(chan types.EnumCommandHandlerStatus)
 	command.State.Progress = 0
 	command.State.ErrorCode = 0
-	command.State.Status = types.COMMAND_STATUS_IN_PROGRESS
-	err = c.save(command)
+	command.State.Status = api.COMMAND_STATUS_IN_PROGRESS
+	err = c.save(backendCommand)
 	if nil != err {
 		http.Error(w, "Couldn't save this command", http.StatusInternalServerError)
 		return
@@ -109,11 +114,11 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	handler := c.getHandler(command)
 	if nil == handler {
 		http.Error(w, "Unknown Request Type", http.StatusBadRequest)
+		return
 	}
-	commandContext := types.CommandContext{command, user, r}
+	commandContext := types.CommandContext{backendCommand, user, r}
 	hErr := handler.Handle(&commandContext, channel)
-
-	if nil != err {
+	if nil != hErr {
 		http.Error(w, hErr.Err.Error(), hErr.Status)
 		return
 	}
@@ -126,29 +131,29 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case a := <-channel:
-		types.LOG_DEBUG.Println("Got answer from command")
+		tools.LOG_DEBUG.Println("Got answer from command")
 		timer.Stop()
 		if types.EnumCommandHandlerDone == a {
-			command.State.Status = types.COMMAND_STATUS_DONE
+			command.State.Status = api.COMMAND_STATUS_DONE
 			command.State.Progress = 100
 		} else if types.EnumCommandHandlerError == a {
-			command.State.Status = types.COMMAND_STATUS_ERROR
+			command.State.Status = api.COMMAND_STATUS_ERROR
 			command.State.Progress = 100
 		}
-		c.save(command)
+		c.save(backendCommand)
 	case <-timer.C:
-		types.LOG_DEBUG.Println("Timer just elapsed")
+		tools.LOG_DEBUG.Println("Timer just elapsed")
 		go func() {
 			//Wait for the command to end
 			a := <-channel
 			if types.EnumCommandHandlerDone == a {
-				command.State.Status = types.COMMAND_STATUS_DONE
+				command.State.Status = api.COMMAND_STATUS_DONE
 				command.State.Progress = 100
 			} else if types.EnumCommandHandlerError == a {
-				command.State.Status = types.COMMAND_STATUS_ERROR
+				command.State.Status = api.COMMAND_STATUS_ERROR
 				command.State.Progress = 100
 			}
-			c.save(command)
+			c.save(backendCommand)
 		}()
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -229,25 +234,25 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, string(b))
 	} else if "PUT" == r.Method {
 
-		if 100 == command.State.Progress {
+		if 100 == command.ApiCommand.State.Progress {
 			http.Error(w, "Command already completed", http.StatusUnauthorized)
 			return
 		}
 		input, err := ioutil.ReadAll(r.Body)
-		types.LOG_DEBUG.Println("Received ", len(input), "bytes")
+		tools.LOG_DEBUG.Println("Received ", len(input), "bytes")
 		if nil != err {
 			errMessage := fmt.Sprintf("1 Failed with error code: %s", err)
-			types.LOG_ERROR.Println(errMessage)
+			tools.LOG_ERROR.Println(errMessage)
 			http.Error(w, errMessage, http.StatusBadRequest)
 			return
 		}
-		h := c.getHandler(command)
+		h := c.getHandler(command.ApiCommand)
 		commandContext := types.CommandContext{command, user, r}
 		uploadPath, size, hErr := h.GetUploadPath(&commandContext)
 
 		if nil != hErr {
 			errMessage := fmt.Sprintf("Failed to get upload path with error code: %s", hErr.Err)
-			types.LOG_ERROR.Println(errMessage)
+			tools.LOG_ERROR.Println(errMessage)
 			http.Error(w, errMessage, hErr.Status)
 			return
 		}
@@ -264,7 +269,7 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 				fo.Close()
 			} else {
 				errMessage := fmt.Sprintf("Couldn't read stat with error %s", err)
-				types.LOG_ERROR.Println(errMessage)
+				tools.LOG_ERROR.Println(errMessage)
 				http.Error(w, errMessage, http.StatusInternalServerError)
 				return
 			}
@@ -274,13 +279,13 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 			rangeValue, err := parseRange(rangeHeader, size)
 			if nil != err {
 				errMessage := fmt.Sprintf("Incorrect Range header %s", err.Error())
-				types.LOG_ERROR.Println(errMessage)
+				tools.LOG_ERROR.Println(errMessage)
 				http.Error(w, errMessage, http.StatusBadRequest)
 				return
 			}
 			if size < rangeValue.start {
 				errMessage := fmt.Sprintf("Couldn't seek to requested offset %d", rangeValue.start)
-				types.LOG_ERROR.Println(errMessage)
+				tools.LOG_ERROR.Println(errMessage)
 				http.Error(w, errMessage, http.StatusBadRequest)
 				return
 			}
@@ -290,16 +295,16 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 		f, err := os.OpenFile(*uploadPath, os.O_RDWR, os.ModePerm)
 		if nil != err {
 			errMessage := fmt.Sprintf("Failed to open file with error %s", err)
-			types.LOG_ERROR.Println(errMessage)
+			tools.LOG_ERROR.Println(errMessage)
 			http.Error(w, errMessage, http.StatusInternalServerError)
 			return
 		}
 		defer f.Close()
 		f.Seek(offset, os.SEEK_SET)
 		io.WriteString(f, string(input))
-		command.State.Progress = int((offset + int64(len(input))) * 100 / size)
-		if 100 == command.State.Progress {
-			command.State.Status = types.COMMAND_STATUS_DONE
+		command.ApiCommand.State.Progress = int((offset + int64(len(input))) * 100 / size)
+		if 100 == command.ApiCommand.State.Progress {
+			command.ApiCommand.State.Status = api.COMMAND_STATUS_DONE
 		}
 	}
 }
@@ -311,13 +316,13 @@ func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
 	link, err := c.config.Db.GetDownloadLink(file)
 	//Get the realpath depending on the configuration and the sharelink or direct download
 	if nil == err {
-		types.LOG_DEBUG.Println("Serving file ", *link.RealPath)
+		tools.LOG_DEBUG.Println("Serving file ", *link.RealPath)
 		fileInfo, err := os.Lstat(*link.RealPath)
-		if nil != err{
+		if nil != err {
 			http.Error(w, "Download link doesn't point to a valid path", http.StatusNotFound)
 			return
 		}
-		if fileInfo.IsDir(){
+		if fileInfo.IsDir() {
 			zipFileName := fileInfo.Name() + ".zip"
 			w.Header().Set("Content-Type", "application/zip")
 			w.Header().Set("Content-Disposition", `attachment; filename="`+zipFileName+`"`)
@@ -346,7 +351,7 @@ func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
 				return nil
 			})
 
-		}else{
+		} else {
 			w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(*link.RealPath))
 			http.ServeFile(w, r, *link.RealPath)
 		}

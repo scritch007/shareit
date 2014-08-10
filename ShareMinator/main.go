@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/scritch007/shareit"
 	"github.com/scritch007/shareit/types"
+	"github.com/scritch007/go-tools"
 	"io"
 	"net/http"
 	"os"
@@ -16,7 +17,22 @@ func (m *Main) serveJSFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Main) serveCSSFile(w http.ResponseWriter, r *http.Request) {
-	m.serveFile(w, r, "css/")
+	vars := mux.Vars(r)
+	file := vars["file"]
+
+	if file == "bootstrap.min.css"{
+		tools.LOG_DEBUG.Println("retrieving this thing")
+		cookie, err := r.Cookie("theme")
+		tools.LOG_DEBUG.Println(err)
+		if nil == err{
+			file = "bootstrap." + cookie.Value + ".min.css"
+		}else{
+			tools.LOG_DEBUG.Println("main bootstrap")
+			file = "bootstrap.main.min.css"
+		}
+	}
+	tools.LOG_DEBUG.Println("Serving file ", file)
+	http.ServeFile(w, r, path.Join(m.path, "css", file))
 }
 
 func (m *Main) serveIMGFile(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +48,7 @@ func (m *Main) serveBowerFiles(w http.ResponseWriter, r *http.Request) {
 func (m *Main) serveFile(w http.ResponseWriter, r *http.Request, folder string) {
 	vars := mux.Vars(r)
 	file := vars["file"]
-	types.LOG_DEBUG.Println("Serving file %s", file)
+	tools.LOG_DEBUG.Println("Serving file %s", file)
 	http.ServeFile(w, r, path.Join(m.path, folder, file))
 }
 
@@ -67,7 +83,7 @@ func (m *Main) configHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	types.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
+	tools.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
 	r := mux.NewRouter()
 	config := shareit.NewConfiguration(r)
 
@@ -92,7 +108,7 @@ func main() {
 
 	http.Handle(config.HtmlPrefix, r)
 
-	types.LOG_INFO.Println("Starting server on port " + m.port)
+	tools.LOG_INFO.Println("Starting server on port " + m.port)
 	http.ListenAndServe(":"+m.port, nil)
 }
 

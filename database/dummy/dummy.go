@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"github.com/scritch007/shareit/types"
+	"github.com/scritch007/go-tools"
 	"io/ioutil"
 	"os"
 	"path"
@@ -20,7 +22,7 @@ const (
 )
 
 type pathAccesses struct {
-	Accesses map[string]types.AccessType
+	Accesses map[string]api.AccessType
 }
 
 type DummyDatabase struct {
@@ -51,9 +53,9 @@ func NewDummyDatabase(config *json.RawMessage) (d *DummyDatabase, err error) {
 	//Prepare the folder
 	if _, err := os.Stat(d.DbFolder); err != nil {
 		if os.IsNotExist(err) {
-			types.LOG_ERROR.Println("Error: the path %s, doesn't exist", d.DbFolder)
+			tools.LOG_ERROR.Println("Error: the path %s, doesn't exist", d.DbFolder)
 		} else {
-			types.LOG_ERROR.Println("Error: Something went wrong when accessing to %s, %v", d.DbFolder, err)
+			tools.LOG_ERROR.Println("Error: Something went wrong when accessing to %s, %v", d.DbFolder, err)
 		}
 		return nil, err
 	}
@@ -154,21 +156,21 @@ const (
 func (d *DummyDatabase) Log(level LogLevel, message string) {
 	switch level {
 	case DEBUG:
-		types.LOG_DEBUG.Println("DummyDb: ", message)
+		tools.LOG_DEBUG.Println("DummyDb: ", message)
 	case INFO:
-		types.LOG_INFO.Println("DummyDb: ", message)
+		tools.LOG_INFO.Println("DummyDb: ", message)
 	case WARNING:
-		types.LOG_WARNING.Println("DummyDb: ", message)
+		tools.LOG_WARNING.Println("DummyDb: ", message)
 	case ERROR:
-		types.LOG_ERROR.Println("DummyDb: ", message)
+		tools.LOG_ERROR.Println("DummyDb: ", message)
 	}
 }
 func (d *DummyDatabase) SaveCommand(command *types.Command) (err error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
-	if 0 == len(command.CommandId) {
+	if 0 == len(command.ApiCommand.CommandId) {
 		d.commandsList[d.commandIndex] = command
-		command.CommandId = strconv.Itoa(d.commandIndex)
+		command.ApiCommand.CommandId = strconv.Itoa(d.commandIndex)
 		d.commandIndex += 1
 		if len(d.commandsList) == d.commandIndex {
 			new_list := make([]*types.Command, len(d.commandsList)*2)
@@ -178,10 +180,10 @@ func (d *DummyDatabase) SaveCommand(command *types.Command) (err error) {
 			d.commandsList = new_list
 		}
 	}
-	d.Log(DEBUG, fmt.Sprintf("%s : %s", "Saved new Command", command.Name))
+	d.Log(DEBUG, fmt.Sprintf("%s : %s", "Saved new Command", command.ApiCommand.Name))
 	return nil
 }
-func (d *DummyDatabase) ListCommands(user *string, offset int, limit int, search_parameters *types.CommandsSearchParameters) ([]*types.Command, int, error) {
+func (d *DummyDatabase) ListCommands(user *string, offset int, limit int, search_parameters *api.CommandsSearchParameters) ([]*types.Command, int, error) {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 	tempResult := make([]*types.Command, d.commandIndex) // Maximum size this could have
@@ -374,7 +376,7 @@ func (d *DummyDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	//TODO check if there is already a sharelink with this name and user
-	d.shareLinkMap[*shareLink.Key] = shareLink
+	d.shareLinkMap[*shareLink.ShareLink.Key] = shareLink
 	return d.saveDb()
 }
 func (d *DummyDatabase) GetShareLink(key string) (shareLink *types.ShareLink, err error) {
@@ -425,7 +427,7 @@ func (d *DummyDatabase) getShareLinksFromPath(path string, user string) (shareLi
 	shareLinks = make([]*types.ShareLink, 0, 10)
 	var count = 0
 	for _, shareLink := range d.shareLinkMap {
-		if *shareLink.Path == path && shareLink.User == user {
+		if *shareLink.ShareLink.Path == path && shareLink.User == user {
 			shareLinks = shareLinks[0 : count+1]
 			shareLinks[count] = shareLink
 			count += 1
@@ -499,13 +501,13 @@ func (d *DummyDatabase) saveDb() error {
 	return nil
 }
 
-func (d *DummyDatabase) GetAccess(user *string, path string) (types.AccessType, error) {
+func (d *DummyDatabase) GetAccess(user *string, path string) (api.AccessType, error) {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 	return d.getAccess(user, path)
 }
 
-func (d *DummyDatabase) getAccess(user *string, path string) (types.AccessType, error) {
+func (d *DummyDatabase) getAccess(user *string, path string) (api.AccessType, error) {
 	var user_email string
 	if nil == user {
 		user_email = ""
@@ -516,31 +518,31 @@ func (d *DummyDatabase) getAccess(user *string, path string) (types.AccessType, 
 	if !found {
 		// If user is not Nil then look for the public accesses
 		if nil == user {
-			return types.NONE, nil
+			return api.NONE, nil
 		}
 		accesses, found = d.accesses[""]
 		if !found {
-			return types.NONE, nil
+			return api.NONE, nil
 		}
 	}
 	//Now check for the path
 	splittedPath := strings.Split(path, "/")
-	finalAccessType := types.NONE
+	finalAccessType := api.NONE
 	for i := len(splittedPath); i > 0; i-- {
 		accessType, found := accesses.Accesses[strings.Join(splittedPath[:i], "/")]
-		types.LOG_DEBUG.Println("Looking for access to ", strings.Join(splittedPath[:i], "/"))
+		tools.LOG_DEBUG.Println("Looking for access to ", strings.Join(splittedPath[:i], "/"))
 		if found {
 			finalAccessType = accessType
 			break
 		}
 	}
-	if types.NONE == finalAccessType && nil != user {
+	if api.NONE == finalAccessType && nil != user {
 		return d.getAccess(nil, path)
 	}
 
 	return finalAccessType, nil
 }
-func (d *DummyDatabase) SetAccess(user *string, path string, access types.AccessType) error {
+func (d *DummyDatabase) SetAccess(user *string, path string, access api.AccessType) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	var user_email string
@@ -553,7 +555,7 @@ func (d *DummyDatabase) SetAccess(user *string, path string, access types.Access
 	if !found {
 		//Create accessPath dict
 		accesses = new(pathAccesses)
-		accesses.Accesses = make(map[string]types.AccessType)
+		accesses.Accesses = make(map[string]api.AccessType)
 		d.accesses[user_email] = accesses
 	}
 	accesses.Accesses[path] = access

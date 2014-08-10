@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jmcvetta/randutil"
 	"github.com/scritch007/shareit/types"
+	"github.com/scritch007/go-tools"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -78,7 +79,7 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 	//method auth, create, validate
 	input, err := ioutil.ReadAll(r.Body)
 	if nil != err {
-		types.LOG_ERROR.Println("1 Failed with error code " + err.Error())
+		tools.LOG_ERROR.Println("1 Failed with error code " + err.Error())
 		return
 	}
 
@@ -87,43 +88,43 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 		var authCommand Auth
 		err = json.Unmarshal(input, &authCommand)
 		if nil != err {
-			types.LOG_ERROR.Println(fmt.Sprintf("Couldn't parse command %s\n with error: %s", input, err))
+			tools.LOG_ERROR.Println(fmt.Sprintf("Couldn't parse command %s\n with error: %s", input, err))
 			http.Error(w, "Couldn't parse command", http.StatusBadRequest)
 			return
 		}
 		splittedElements := strings.Split(authCommand.ChallengeHash, ":")
 		if 2 != len(splittedElements) {
-			types.LOG_ERROR.Println("Wrong Input")
+			tools.LOG_ERROR.Println("Wrong Input")
 			http.Error(w, "Wrong command Input", http.StatusBadRequest)
 			return
 		}
 		account, _, err := auth.config.Db.GetAccount(Name, authCommand.Login)
 		if nil != err {
-			types.LOG_ERROR.Println("Unknown user ", authCommand.Login, " requested")
+			tools.LOG_ERROR.Println("Unknown user ", authCommand.Login, " requested")
 			http.Error(w, fmt.Sprintf("Unknown user %s requested", authCommand.Login), http.StatusUnauthorized)
 			return
 		}
 		refInt, err := strconv.Atoi(authCommand.Ref)
 		if nil != err {
-			types.LOG_ERROR.Println("Invalid reference ", authCommand.Ref)
+			tools.LOG_ERROR.Println("Invalid reference ", authCommand.Ref)
 			http.Error(w, fmt.Sprintf("Invalid Reference"), http.StatusUnauthorized)
 			return
 		}
 		challenge, found := auth.challengeMap[refInt]
 		if !found {
-			types.LOG_ERROR.Println("Challenge ,", authCommand.Ref, " not found ")
+			tools.LOG_ERROR.Println("Challenge ,", authCommand.Ref, " not found ")
 			http.Error(w, fmt.Sprintf("Challenge ,%s not found", authCommand.Ref), http.StatusUnauthorized)
 			return
 		}
 
 		if challenge.Challenge != splittedElements[0] {
-			types.LOG_ERROR.Println("Incorrect Challenge Hash ", splittedElements[0], " received, expecting :", challenge.Challenge)
+			tools.LOG_ERROR.Println("Incorrect Challenge Hash ", splittedElements[0], " received, expecting :", challenge.Challenge)
 			http.Error(w, "Incorrect Challenge Hash", http.StatusUnauthorized)
 			return
 		}
 		authSpecific := account.Auths[Name]
 		if authSpecific.Blob != splittedElements[1] {
-			types.LOG_ERROR.Println("Incorrect Password ", splittedElements[1], " received, expecting :", authSpecific.Blob)
+			tools.LOG_ERROR.Println("Incorrect Password ", splittedElements[1], " received, expecting :", authSpecific.Blob)
 			http.Error(w, "Incorrect Password", http.StatusUnauthorized)
 			return
 		}
@@ -133,7 +134,7 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 		session := types.Session{AuthenticationHeader: result.AuthenticationHeader, UserId: account.Id}
 		err = auth.config.Db.StoreSession(&session)
 		if nil != err {
-			types.LOG_ERROR.Println("Couldn't save session")
+			tools.LOG_ERROR.Println("Couldn't save session")
 			http.Error(w, "Couldn't save session", http.StatusUnauthorized)
 			return
 		}
@@ -144,7 +145,7 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 		var create CreateCommand
 		err = json.Unmarshal(input, &create)
 		if nil != err {
-			types.LOG_ERROR.Println(fmt.Sprintf("Couldn't parse command %s\n with error: %s", input, err))
+			tools.LOG_ERROR.Println(fmt.Sprintf("Couldn't parse command %s\n with error: %s", input, err))
 			http.Error(w, "Couldn't parse command", http.StatusBadRequest)
 			return
 		}
@@ -159,7 +160,7 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 		err = auth.config.Db.AddAccount(account)
 		if nil != err {
 			errMessage := fmt.Sprintf("Couldn't save this account with error %s", err)
-			types.LOG_ERROR.Println(errMessage)
+			tools.LOG_ERROR.Println(errMessage)
 			http.Error(w, errMessage, http.StatusInternalServerError)
 			return
 		}
@@ -176,14 +177,14 @@ func (auth *DummyAuth) Handle(w http.ResponseWriter, r *http.Request) {
 		var challenge GetChallenge
 		challenge.Challenge, err = randutil.AlphaString(20)
 		if nil != err {
-			types.LOG_ERROR.Println(fmt.Sprintf("Failed to generate Random string with error: %s", err))
+			tools.LOG_ERROR.Println(fmt.Sprintf("Failed to generate Random string with error: %s", err))
 			http.Error(w, "Failed to generate Random String", http.StatusBadRequest)
 		}
 		challengeId := auth.challengeId
 		challenge.Ref = strconv.Itoa(challengeId)
 		auth.challengeMap[challengeId] = &challenge
 		challenge.timer = time.AfterFunc(2*time.Second, func() {
-			types.LOG_DEBUG.Println("Removing challenge ", challengeId, ", it has just expired")
+			tools.LOG_DEBUG.Println("Removing challenge ", challengeId, ", it has just expired")
 			delete(auth.challengeMap, challengeId)
 		})
 

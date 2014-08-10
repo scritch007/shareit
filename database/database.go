@@ -5,10 +5,11 @@ import (
 	"errors"
 	"github.com/scritch007/shareit/database/dummy"
 	"github.com/scritch007/shareit/types"
+	"github.com/scritch007/go-tools"
 )
 
 func NewDatabase(name string, config *json.RawMessage) (types.DatabaseInterface, error) {
-	types.LOG_DEBUG.Println("Creating new instance of database %s", name)
+	tools.LOG_DEBUG.Println("Creating new instance of database %s", name)
 	var newDatabase types.DatabaseInterface
 	var err error
 	switch name {
