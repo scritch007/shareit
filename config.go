@@ -3,8 +3,6 @@ package shareit
 
 import (
 	"encoding/json"
-	"flag"
-	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"github.com/scritch007/shareit/auth"
@@ -52,29 +50,7 @@ type readConfiguration struct {
 	AllowChangingAccesses bool             `json:"allow_changing_accesses"`
 }
 
-func NewConfiguration(r *mux.Router) (resultConfig *types.Configuration) {
-	var help = false
-	var configFile = ""
-	flag.StringVar(&configFile, "config", "", "Configuration file to use")
-	flag.StringVar(&configFile, "c", "", "Configuration file to use")
-	flag.BoolVar(&help, "help", false, "Display Help")
-	flag.BoolVar(&help, "h", false, "Display Help")
-
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		flag.PrintDefaults()
-	}
-	flag.Parse()
-
-	if 0 == len(configFile) {
-		flag.Usage()
-		os.Exit(0)
-	}
-
-	if help {
-		flag.Usage()
-		os.Exit(0)
-	}
+func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Configuration) {
 	file, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		fmt.Printf("File error: %v\n", err)

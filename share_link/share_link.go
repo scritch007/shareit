@@ -5,8 +5,8 @@ import (
 	"errors"
 	"github.com/jmcvetta/randutil"
 	"github.com/scritch007/ShareMinatorApiGenerator/api"
-	"github.com/scritch007/shareit/types"
 	"github.com/scritch007/go-tools"
+	"github.com/scritch007/shareit/types"
 	"net/http"
 	"os"
 	"path"
@@ -64,7 +64,7 @@ func (s *ShareLinkHandler) create(context *types.CommandContext, resp chan<- typ
 	sLink.ShareLink = command.ShareLink.Create.Input.ShareLink
 	*sLink.ShareLink.Path = path.Clean(*command.ShareLink.Create.Input.ShareLink.Path)
 	sLink.User = context.Account.Email
-	if nil == command.ShareLink.Create.Input.ShareLink.Name{
+	if nil == command.ShareLink.Create.Input.ShareLink.Name {
 		sLink.ShareLink.Name = new(string)
 		*sLink.ShareLink.Name = "share_link"
 	}

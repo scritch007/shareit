@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
+	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/scritch007/go-tools"
 	"github.com/scritch007/shareit"
 	"github.com/scritch007/shareit/types"
-	"github.com/scritch007/go-tools"
 	"io"
 	"net/http"
 	"os"
@@ -20,13 +22,13 @@ func (m *Main) serveCSSFile(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	file := vars["file"]
 
-	if file == "bootstrap.min.css"{
+	if file == "bootstrap.min.css" {
 		tools.LOG_DEBUG.Println("retrieving this thing")
 		cookie, err := r.Cookie("theme")
 		tools.LOG_DEBUG.Println(err)
-		if nil == err{
+		if nil == err {
 			file = "bootstrap." + cookie.Value + ".min.css"
-		}else{
+		} else {
 			tools.LOG_DEBUG.Println("main bootstrap")
 			file = "bootstrap.main.min.css"
 		}
@@ -85,7 +87,31 @@ func (m *Main) configHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	tools.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
 	r := mux.NewRouter()
-	config := shareit.NewConfiguration(r)
+
+	var help = false
+	var configFile = ""
+	flag.StringVar(&configFile, "config", "", "Configuration file to use")
+	flag.StringVar(&configFile, "c", "", "Configuration file to use")
+	flag.BoolVar(&help, "help", false, "Display Help")
+	flag.BoolVar(&help, "h", false, "Display Help")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+
+	if 0 == len(configFile) {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	if help {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	config := shareit.NewConfiguration(configFile, r)
 
 	m := NewMain(config)
 

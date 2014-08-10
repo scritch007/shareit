@@ -84,7 +84,7 @@ func (d *DownloadLink) String() string {
 }
 
 type ShareLink struct {
-	User     string                `json:"user"`      //This will only be set by server. This is the user that issued the share link
+	User      string `json:"user"` //This will only be set by server. This is the user that issued the share link
 	ShareLink api.ShareLink
 }
 

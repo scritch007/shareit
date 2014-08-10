@@ -3,9 +3,9 @@ package database
 import (
 	"encoding/json"
 	"errors"
+	"github.com/scritch007/go-tools"
 	"github.com/scritch007/shareit/database/dummy"
 	"github.com/scritch007/shareit/types"
-	"github.com/scritch007/go-tools"
 )
 
 func NewDatabase(name string, config *json.RawMessage) (types.DatabaseInterface, error) {

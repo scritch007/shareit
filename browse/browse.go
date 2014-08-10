@@ -3,9 +3,9 @@ package browse
 import (
 	"errors"
 	"github.com/scritch007/ShareMinatorApiGenerator/api"
+	"github.com/scritch007/go-tools"
 	"github.com/scritch007/shareit/auth"
 	"github.com/scritch007/shareit/types"
-	"github.com/scritch007/go-tools"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -235,7 +235,7 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 //Handle the browsing of a folder
 func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
 	command := context.Command.ApiCommand
-	if nil == command.Browser.List || 0 == len(command.Browser.List.Input.Path){
+	if nil == command.Browser.List || 0 == len(command.Browser.List.Input.Path) {
 		tools.LOG_ERROR.Println("Missing input configuration")
 		command.State.ErrorCode = api.ERROR_MISSING_COMMAND_BODY
 		resp <- types.EnumCommandHandlerError
@@ -246,7 +246,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 		//TODO checkt he asUser request header
 		asUser = false
 	}
-	tools.LOG_DEBUG.Println("Retrieving access");
+	tools.LOG_DEBUG.Println("Retrieving access")
 	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.List.Input.Path, asUser)
 
 	if api.ERROR_NO_ERROR != accessPath.Error {
