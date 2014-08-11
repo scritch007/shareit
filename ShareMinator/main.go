@@ -8,6 +8,7 @@ import (
 	"github.com/scritch007/go-tools"
 	"github.com/scritch007/shareit"
 	"github.com/scritch007/shareit/types"
+	"html/template"
 	"io"
 	"net/http"
 	"os"
@@ -19,22 +20,7 @@ func (m *Main) serveJSFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Main) serveCSSFile(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	file := vars["file"]
-
-	if file == "bootstrap.min.css" {
-		tools.LOG_DEBUG.Println("retrieving this thing")
-		cookie, err := r.Cookie("theme")
-		tools.LOG_DEBUG.Println(err)
-		if nil == err {
-			file = "bootstrap." + cookie.Value + ".min.css"
-		} else {
-			tools.LOG_DEBUG.Println("main bootstrap")
-			file = "bootstrap.main.min.css"
-		}
-	}
-	tools.LOG_DEBUG.Println("Serving file ", file)
-	http.ServeFile(w, r, path.Join(m.path, "css", file))
+	m.serveFile(w, r, "css")
 }
 
 func (m *Main) serveIMGFile(w http.ResponseWriter, r *http.Request) {
@@ -54,12 +40,30 @@ func (m *Main) serveFile(w http.ResponseWriter, r *http.Request, folder string) 
 	http.ServeFile(w, r, path.Join(m.path, folder, file))
 }
 
+type Theme struct {
+	Name string
+}
+
 func (m *Main) homeHandler(w http.ResponseWriter, r *http.Request) {
 	mode := r.URL.Query().Get("mode")
 	if "polymer" == mode {
 		http.ServeFile(w, r, path.Join(m.path, "index-polymer.html"))
 	} else {
-		http.ServeFile(w, r, path.Join(m.path, "index.html"))
+		cookie, err := r.Cookie("theme")
+		var file string
+		if nil == err {
+			file = "bootstrap." + cookie.Value + ".min.css"
+		} else {
+			file = "bootstrap.main.min.css"
+		}
+		t, err := template.ParseFiles(path.Join(m.path, "index.html"))
+		if nil != err {
+			io.WriteString(w, "Failed to get template")
+		}
+		err = t.Execute(w, Theme{Name: file})
+		if nil != err {
+			io.WriteString(w, "Failed to write template "+err.Error())
+		}
 	}
 }
 
