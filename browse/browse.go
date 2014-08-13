@@ -5,8 +5,10 @@ import (
 	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"github.com/scritch007/go-tools"
 	"github.com/scritch007/shareit/auth"
+	"github.com/scritch007/shareit/thumbnail"
 	"github.com/scritch007/shareit/types"
 	"io/ioutil"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,11 +18,12 @@ import (
 )
 
 type BrowseHandler struct {
-	config *types.Configuration
+	config    *types.Configuration
+	thumbnail *thumbnail.ThumbnailGenerator
 }
 
 func NewBrowseHandler(config *types.Configuration) (handler *BrowseHandler) {
-	handler = &BrowseHandler{config: config}
+	handler = &BrowseHandler{config: config, thumbnail: thumbnail.NewThumbnailGenerator(config)}
 	return handler
 }
 
@@ -41,6 +44,8 @@ func (b *BrowseHandler) Handle(context *types.CommandContext, resp chan<- types.
 		go b.downloadLink(context, resp)
 	} else if command.ApiCommand.Name == api.EnumBrowserUploadFile {
 		go b.uploadFile(context, resp)
+	} else if command.ApiCommand.Name == api.EnumBrowserThumbnail {
+		go b.thumbnailCommand(context, resp)
 	} else {
 		return &types.HttpError{Err: errors.New("Unknown Browse command"), Status: http.StatusBadRequest}
 	}
@@ -232,6 +237,50 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 	resp <- types.EnumCommandHandlerPostponed
 }
 
+func (b *BrowseHandler) thumbnailCommand(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
+	command := context.Command.ApiCommand
+	if nil == command.Browser.Thumbnail {
+		tools.LOG_ERROR.Println("Missing configuration")
+		command.State.ErrorCode = api.ERROR_MISSING_COMMAND_BODY
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
+	asUser := nil == context.Account || !context.Account.IsAdmin
+
+	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.Thumbnail.Input.Path, asUser)
+
+	if api.ERROR_NO_ERROR != accessPath.Error {
+		command.State.ErrorCode = accessPath.Error
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
+	item_path := accessPath.RealPath
+	if nil == item_path {
+		command.State.ErrorCode = api.ERROR_INVALID_PATH
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+
+	//If write access has been removed, then we should respond false!!
+	if api.NONE == accessPath.Access {
+		command.State.ErrorCode = api.ERROR_NOT_ALLOWED
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+	responseChan := make(chan string)
+	thumbnailRequest := thumbnail.ThumbnailRequest{Path: *accessPath.RealPath, Response: responseChan}
+	b.thumbnail.GetThumbnail(&thumbnailRequest)
+	value := <-responseChan
+	command.Browser.Thumbnail.Output.Content = value
+	if 0 == len(value) {
+		resp <- types.EnumCommandHandlerError
+	} else {
+		resp <- types.EnumCommandHandlerDone
+	}
+}
+
 //Handle the browsing of a folder
 func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
 	command := context.Command.ApiCommand
@@ -265,7 +314,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 	counter := 0
 	var result []api.StorageItem
 
-	command.Browser.List.Output.CurrentItem = api.StorageItem{Name: filepath.Base(command.Browser.List.Input.Path), IsDir: accessPath.IsDir, MDate: accessPath.FileInfo.ModTime().Unix(), Access: accessPath.Access, ShareAccess: accessPath.Access, Kind: filepath.Ext(accessPath.FileInfo.Name())}
+	command.Browser.List.Output.CurrentItem = api.StorageItem{Name: filepath.Base(command.Browser.List.Input.Path), IsDir: accessPath.IsDir, MDate: accessPath.FileInfo.ModTime().Unix(), Access: accessPath.Access, ShareAccess: accessPath.Access, Kind: filepath.Ext(accessPath.FileInfo.Name()), Mimetype: mime.TypeByExtension(filepath.Ext(accessPath.FileInfo.Name()))}
 	if accessPath.IsDir {
 		fileList, err := ioutil.ReadDir(*accessPath.RealPath)
 		if nil != err {
@@ -280,9 +329,11 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 			if !file.IsDir() {
 				s.Size = file.Size()
 				s.Kind = filepath.Ext(file.Name())
+				s.Mimetype = mime.TypeByExtension(filepath.Ext(file.Name()))
 				access = accessPath.Access
 			} else {
 				s.Kind = "folder"
+				s.Mimetype = ""
 				accessPath2, _ := auth.GetAccessAndPath(b.config, context, path.Join(command.Browser.List.Input.Path, s.Name), asUser)
 				if api.ERROR_NO_ERROR != accessPath2.Error {
 					err = errors.New("Couldn't get infos about this")
