@@ -12,7 +12,6 @@ env:
   - secure: aG1i6kTVYj76TXOr9CpGb7bBjEGltbILqQjR59eNm++Z7Neq7ina5awevU86KrDz0QtEz373osKk4k6b4tTRI38/KoT7avnw+wXgwxP4YcCQ8np/jMGgex2U6yNW3MDu1uszTGzS/cQOMVr1qmqb5rRGoIUoXO/2qh4mwk3fJIQ=
 script:
 - cd 
-- go update github.com/scritch007/shareit/ShareMinator
 - go build github.com/scritch007/shareit/ShareMinator
 after_success:
 - ssh $login@$server mv /home/$login/ShareMinator /home/$login/ShareMinator.save
