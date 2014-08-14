@@ -314,7 +314,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 	counter := 0
 	var result []api.StorageItem
 
-	command.Browser.List.Output.CurrentItem = api.StorageItem{Name: filepath.Base(command.Browser.List.Input.Path), IsDir: accessPath.IsDir, MDate: accessPath.FileInfo.ModTime().Unix(), Access: accessPath.Access, ShareAccess: accessPath.Access, Kind: filepath.Ext(accessPath.FileInfo.Name()), Mimetype: mime.TypeByExtension(filepath.Ext(accessPath.FileInfo.Name()))}
+	command.Browser.List.Output.CurrentItem = api.StorageItem{Name: filepath.Base(command.Browser.List.Input.Path), IsDir: accessPath.IsDir, MDate: accessPath.FileInfo.ModTime().Unix(), Access: accessPath.Access, ShareAccess: accessPath.Access, Kind: filepath.Ext(accessPath.FileInfo.Name()), Size: accessPath.FileInfo.Size(), Mimetype: mime.TypeByExtension(filepath.Ext(accessPath.FileInfo.Name()))}
 	if accessPath.IsDir {
 		fileList, err := ioutil.ReadDir(*accessPath.RealPath)
 		if nil != err {
@@ -326,6 +326,9 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 		var access api.AccessType
 		for _, file := range fileList {
 			s := api.StorageItem{Name: file.Name(), IsDir: file.IsDir(), MDate: file.ModTime().Unix()}
+			if "." == string(file.Name()[0]) && (nil == command.Browser.List.Input.ShowHiddenFiles || !*command.Browser.List.Input.ShowHiddenFiles){
+				continue
+			}
 			if !file.IsDir() {
 				s.Size = file.Size()
 				s.Kind = filepath.Ext(file.Name())
@@ -352,6 +355,9 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 			result[counter] = s
 			counter++
 		}
+	}else{
+		//Force the name for the display
+		command.Browser.List.Output.CurrentItem.Name = accessPath.FileInfo.Name()
 	}
 	command.Browser.List.Output.Children = result[:counter]
 	time.Sleep(2)

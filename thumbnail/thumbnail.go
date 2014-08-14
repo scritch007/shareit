@@ -109,7 +109,7 @@ func (t *ThumbnailGenerator) resizeImage(path string, resp chan<- string) {
 		return
 	}
 	out.Close()
-	base64Value, err = thumbnailToBase64(path + ".thumbnail")
+	base64Value, err = thumbnailToBase64(path)
 	if nil != err {
 		tools.LOG_ERROR.Println("Failed to base64 file " + err.Error())
 		resp <- ""
