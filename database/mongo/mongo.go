@@ -7,25 +7,16 @@ import (
 	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"github.com/scritch007/go-tools"
 	"github.com/scritch007/shareit/types"
-	// "io/ioutil"
-	// "os"
-	// "path"
-	//"path/filepath"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"strconv"
 	"strings"
 	"sync"
-	//"github.com/scritch007/shareit/database"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
 	Name string = "MongoDb"
 )
-
-// type pathAccesses struct {
-// Accesses map[string]api.AccessType
-// }
 
 type pathAccesses struct {
 	Accesses map[string]api.AccessType `json:"access" bson:"access"`
@@ -488,46 +479,34 @@ func (d *MongoDatabase) SetAccess(user *string, path string, access api.AccessTy
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	var user_mail string
+	var user_id string
 	if nil == user {
-		user_mail = ""
+		user_id = ""
 	} else {
-		user_mail = *user
-	}
-	// Convert mail in to user_id
-	_, user_id, err := d.getAccount("", user_mail)
-	if err != nil {
-		message := fmt.Sprintf("SetAccess : user_id not found %s path %s", user_mail, path)
-		d.Log(ERROR, message)
-		return nil
+		user_id = *user
 	}
 
 	c := d.session.DB("mongo").C("accesses")
 	var path_access pathAccesses
-	err = c.Find(bson.M{"user_id": user_id}).One(&path_access)
-	message := fmt.Sprintf("SetAccess %s path %s", user_mail, path)
-	d.Log(ERROR, message)
+	err := c.Find(bson.M{"user_id": user_id}).One(&path_access)
 	if err != nil {
 		//Create accessPath dict
-		message = fmt.Sprintf("SetAccess create with %s path %s", user_mail, path)
-		d.Log(ERROR, message)
 		accesses := new(pathAccesses)
 		accesses.Accesses = make(map[string]api.AccessType)
 		accesses.UserId = user_id
+		accesses.Accesses[path] = access
 		err = c.Insert(accesses)
 		if err != nil {
-			message := fmt.Sprintf("Couldn't insert access %s path %s", user_mail, path)
+			message := fmt.Sprintf("Couldn't insert access %s path %s", user_id, path)
 			d.Log(ERROR, message)
 			return errors.New(message)
 		}
 		return nil
 	}
-	message = fmt.Sprintf("SetAccess update with %s path %s", user_mail, path)
-	d.Log(ERROR, message)
 	path_access.Accesses[path] = access
-	err = c.Update(bson.M{"user_mail": user_mail}, path_access)
+	err = c.Update(bson.M{"user_id": user_id}, path_access)
 	if err != nil {
-		message := fmt.Sprintf("Couldn't update access %s path %s", user_mail, path)
+		message := fmt.Sprintf("Couldn't update access %s path %s", user_id, path)
 		d.Log(ERROR, message)
 		return errors.New(message)
 	}

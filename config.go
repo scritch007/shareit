@@ -121,19 +121,6 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 		os.Exit(3)
 	}
 
-	if !c.AllowChangingAccesses {
-		if nil == c.UserAccesses {
-			fmt.Println("Error: allow_changing_accesses is false and no accesses defined")
-			os.Exit(4)
-		}
-		for _, elem := range *c.UserAccesses {
-			user_name := elem.User
-			for _, access := range elem.Accesses {
-				resultConfig.Db.SetAccess(user_name, access.Name, access.Access)
-			}
-		}
-	}
-
 	//Now create the root account if if doesn't exist
 	if nil != c.RootUser {
 		account, id, err := resultConfig.Db.GetAccount(dummy.Name, c.RootUser.Email)
@@ -164,6 +151,28 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 		}
 
 	}
+
+	if !c.AllowChangingAccesses {
+
+		if nil == c.UserAccesses {
+			fmt.Println("Error: allow_changing_accesses is false and no accesses defined")
+			os.Exit(4)
+		}
+		for _, elem := range *c.UserAccesses {
+			user_id := ""
+			if elem.User != nil && *elem.User != "" {
+				_, user_id, err = resultConfig.Db.GetAccount(dummy.Name, *elem.User)
+				if err != nil {
+					fmt.Println("Error: Account not found", *elem.User)
+					continue
+				}
+			}
+			for _, access := range elem.Accesses {
+				resultConfig.Db.SetAccess(&user_id, access.Name, access.Access)
+			}
+		}
+	}
+
 	resultConfig.AllowRootWrite = c.AllowRootWrite
 	return resultConfig
 }
