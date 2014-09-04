@@ -171,6 +171,7 @@ func (d *DummyDatabase) SaveCommand(command *types.Command) (err error) {
 	if 0 == len(command.ApiCommand.CommandId) {
 		d.commandsList[d.commandIndex] = command
 		command.ApiCommand.CommandId = strconv.Itoa(d.commandIndex)
+		command.CommandId = strconv.Itoa(d.commandIndex)
 		d.commandIndex += 1
 		if len(d.commandsList) == d.commandIndex {
 			new_list := make([]*types.Command, len(d.commandsList)*2)
@@ -376,6 +377,7 @@ func (d *DummyDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	//TODO check if there is already a sharelink with this name and user
+	shareLink.Id = *shareLink.ShareLink.Key
 	d.shareLinkMap[*shareLink.ShareLink.Key] = shareLink
 	return d.saveDb()
 }
@@ -551,13 +553,16 @@ func (d *DummyDatabase) SetAccess(user *string, path string, access api.AccessTy
 	} else {
 		user_email = *user
 	}
+
 	accesses, found := d.accesses[user_email]
 	if !found {
 		//Create accessPath dict
 		accesses = new(pathAccesses)
 		accesses.Accesses = make(map[string]api.AccessType)
+		accesses.Accesses[path] = access
 		d.accesses[user_email] = accesses
 	}
+
 	accesses.Accesses[path] = access
 	d.saveDb()
 	return nil

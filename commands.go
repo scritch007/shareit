@@ -221,14 +221,15 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ref := vars["command_id"]
 	command, err := c.config.Db.GetCommand(ref)
-	if nil != command.User && (nil == user || *command.User != user.Id) {
-		http.Error(w, "You are trying to access some resources that do not belong to you", http.StatusUnauthorized)
-		return
-	}
 	if nil != err {
 		http.Error(w, fmt.Sprintf("Couldn't get this command ref %s", ref), http.StatusBadRequest)
 		return
 	}
+	if nil != command.User && (nil == user || *command.User != user.Id) {
+		http.Error(w, "You are trying to access some resources that do not belong to you", http.StatusUnauthorized)
+		return
+	}
+
 	if "GET" == r.Method {
 		b, _ := json.Marshal(command)
 		io.WriteString(w, string(b))

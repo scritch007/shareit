@@ -40,21 +40,21 @@ type DatabaseInterface interface {
 }
 
 type AccountSpecificAuth struct {
-	AuthType string `json:"auth_type"`
-	Blob     string `json:"specific"`
+	AuthType string `json:"auth_type" bson:"auth_type"`
+	Blob     string `json:"specific" bson:"specific"`
 }
 type Account struct {
-	Login   string `json:"login"`
-	Email   string `json:"email"`
-	Id      string `json:"id"`       //This id should be unique depending on the DbType
-	IsAdmin bool   `json:"is_admin"` //Can only be changed by the admin
+	Login   string `json:"login" bson:"login"`
+	Email   string `json:"email" bson:"email"`
+	Id      string `json:"id"  bson:"id"`             //This id should be unique depending on the DbType
+	IsAdmin bool   `json:"is_admin"  bson:"is_admin"` //Can only be changed by the admin
 	//Add some other infos here for all the specific stuffs
 	Auths map[string]AccountSpecificAuth
 }
 
 type Session struct {
-	AuthenticationHeader string
-	UserId               string
+	AuthenticationHeader string `json:"authentication_header" bson:"authentication_header"`
+	UserId               string `json:"user_id" bson:"user_id"`
 }
 
 //Configuration Structure
@@ -70,9 +70,9 @@ type Configuration struct {
 }
 
 type DownloadLink struct {
-	Link     string  `json:"link"`
-	Path     string  `json:"path"`
-	RealPath *string `json:"real_path,omitempty"` //Will only be used when storing in the DB
+	Link     string  `json:"link" bson:"link"`
+	Path     string  `json:"path" bson:"path"`
+	RealPath *string `json:"real_path,omitempty" bson:"real_path,omitempty"` //Will only be used when storing in the DB
 }
 
 func (d *DownloadLink) String() string {
@@ -84,13 +84,15 @@ func (d *DownloadLink) String() string {
 }
 
 type ShareLink struct {
-	User      string `json:"user"` //This will only be set by server. This is the user that issued the share link
+	User      string `json:"user" bson:"user"` //This will only be set by server. This is the user that issued the share link
+	Id        string `json:"id" bson:"id"`     //shortcut for key
 	ShareLink api.ShareLink
 }
 
 type Command struct {
 	ApiCommand *api.Command
-	User       *string `json:"user,omitempty"` //This is only used internally to know who is actually making the request
+	User       *string `json:"user,omitempty" bson:"user,omitempty"` //This is only used internally to know who is actually making the request
+	CommandId  string  `json:"command_id" bson:"command_id"`
 }
 
 func (c *Command) String() string {
