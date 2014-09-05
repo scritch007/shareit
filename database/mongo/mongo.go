@@ -389,7 +389,7 @@ func (d *MongoDatabase) ListShareLinks(user string) (shareLinks []*types.ShareLi
 		d.Log(ERROR, message)
 		return nil, errors.New(message)
 	}
-	return shareLinks, err
+	return results, nil
 }
 
 func (d *MongoDatabase) GetShareLinksFromPath(path string, user string) (shareLink []*types.ShareLink, err error) {
