@@ -102,7 +102,8 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 		} else {
 			if !isRoot {
 				//Check if user has access to this path
-				access, err := config.Db.GetAccess(context.Command.User, inPath)
+				var err error
+				access, err = config.Db.GetAccess(context.Command.User, inPath)
 				if nil != err {
 					tools.LOG_ERROR.Println("Couldn't get access " + err.Error())
 					accessPath.Error = api.ERROR_INVALID_PATH
@@ -119,7 +120,6 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 			}
 		}
 	}
-
 	realPath := path.Clean(path.Join(config.RootPrefix, chroot, inPath))
 	tools.LOG_DEBUG.Println("Realpath is " + realPath)
 	fileInfo, err := os.Lstat(realPath)
