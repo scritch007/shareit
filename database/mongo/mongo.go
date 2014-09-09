@@ -24,14 +24,17 @@ type pathAccesses struct {
 }
 
 type MongoDatabase struct {
+	Ip      string `json:"ip"`
 	session *mgo.Session
 	lock    sync.RWMutex
 }
 
 func NewMongoDatase(config *json.RawMessage) (d *MongoDatabase, err error) {
 	d = new(MongoDatabase)
-	// TODO set ip in config.json
-	session, err := mgo.Dial("127.0.0.1")
+	if err = json.Unmarshal(*config, d); nil != err {
+		return nil, err
+	}
+	session, err := mgo.Dial(d.Ip)
 	if err != nil {
 		fmt.Println("Unable to connect to local mongo instance!")
 		return nil, err
