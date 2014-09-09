@@ -242,25 +242,31 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// make a buffer to keep chunks that are read
-		buf := make([]byte, c.UploadChunkSize)
+		buf := make([]byte, 0, c.UploadChunkSize)
 		total_size := r.ContentLength
 		var chunk_offset int64
+		var buf_dim int64
 		chunk_offset = int64(0)
 		for {
-			read_size, err := io.ReadFull(r.Body, buf)
-			tools.LOG_DEBUG.Println("Received ", read_size, "bytes")
-			if read_size == 0 {
-				// EOF case
+			rest := total_size - chunk_offset
+			if rest == 0 {
+				// EOF
 				break
 			}
-			if chunk_offset+int64(read_size) != int64(total_size) {
-				if nil != err {
-					errMessage := fmt.Sprintf("1 Failed with error code: %s", err)
-					tools.LOG_ERROR.Println(errMessage)
-					http.Error(w, errMessage, http.StatusBadRequest)
-					return
-				}
+			if rest > c.UploadChunkSize {
+				buf_dim = c.UploadChunkSize
+			} else {
+				buf_dim = rest
 			}
+
+			read_size, err := io.ReadFull(r.Body, buf[:buf_dim])
+			if nil != err {
+				errMessage := fmt.Sprintf("1 Failed with error code: %s", err)
+				tools.LOG_ERROR.Println(errMessage)
+				http.Error(w, errMessage, http.StatusBadRequest)
+				return
+			}
+			tools.LOG_DEBUG.Println("Received ", read_size, "bytes")
 			h := c.getHandler(command.ApiCommand)
 			commandContext := types.CommandContext{command, user, r}
 			uploadPath, size, hErr := h.GetUploadPath(&commandContext)
