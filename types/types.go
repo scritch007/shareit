@@ -59,14 +59,15 @@ type Session struct {
 
 //Configuration Structure
 type Configuration struct {
-	RootPrefix     string
-	PrivateKey     string
-	StaticPath     string
-	HtmlPrefix     string
-	WebPort        string
-	AllowRootWrite bool
-	Db             DatabaseInterface
-	Auth           *Authentication
+	RootPrefix      string
+	PrivateKey      string
+	StaticPath      string
+	HtmlPrefix      string
+	WebPort         string
+	AllowRootWrite  bool
+	Db              DatabaseInterface
+	Auth            *Authentication
+	UploadChunkSize int64
 }
 
 type DownloadLink struct {

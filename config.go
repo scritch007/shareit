@@ -49,6 +49,7 @@ type readConfiguration struct {
 	RootUser              *rootUserConfig  `json:"root_user"`      //Used for the admin config. If not specified, then noone will be allowed to change the configuration
 	UserAccesses          *[]userAccesses  `json:"user_accesses"`  //Can be empty if allow_changing_accesses is set to true. Otherwise should be set
 	AllowChangingAccesses bool             `json:"allow_changing_accesses"`
+	UploadChunkSize       int64            `json:"upload_chunk_size"`
 }
 
 func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Configuration) {
@@ -100,6 +101,7 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 	resultConfig.PrivateKey = c.PrivateKey
 	resultConfig.StaticPath = staticPath
 	resultConfig.WebPort = c.WebPort
+	resultConfig.UploadChunkSize = c.UploadChunkSize
 
 	temp := path.Join(c.HtmlPrefix, "/")
 	if "/" != string(temp[len(temp)-1]) {
