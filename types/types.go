@@ -40,21 +40,21 @@ type DatabaseInterface interface {
 }
 
 type AccountSpecificAuth struct {
-	AuthType string `json:"auth_type" bson:"auth_type"`
-	Blob     string `json:"specific" bson:"specific"`
+	AuthType string `json:"auth_type" bson:"auth_type" sql:"type:varchar;"`
+	Blob     string `json:"specific" bson:"specific" sql:"type:varchar;"`
 }
 type Account struct {
-	Login   string `json:"login" bson:"login"`
-	Email   string `json:"email" bson:"email"`
-	Id      string `json:"id"  bson:"id"`             //This id should be unique depending on the DbType
-	IsAdmin bool   `json:"is_admin"  bson:"is_admin"` //Can only be changed by the admin
+	Login   string `json:"login" bson:"login" sql:"type:varchar;"`
+	Email   string `json:"email" bson:"email" sql:"type:varchar;"`
+	Id      string `json:"id"  bson:"id" sql:"type:varchar;"`             //This id should be unique depending on the DbType
+	IsAdmin bool   `json:"is_admin"  bson:"is_admin" sql:"type:boolean;"` //Can only be changed by the admin
 	//Add some other infos here for all the specific stuffs
-	Auths map[string]AccountSpecificAuth
+	Auths map[string]AccountSpecificAuth `sql:"-"`
 }
 
 type Session struct {
-	AuthenticationHeader string `json:"authentication_header" bson:"authentication_header"`
-	UserId               string `json:"user_id" bson:"user_id"`
+	AuthenticationHeader string `json:"authentication_header" bson:"authentication_header" sql:"type:varchar;"`
+	UserId               string `json:"user_id" bson:"user_id" sql:"type:varchar;"`
 }
 
 //Configuration Structure
@@ -70,9 +70,9 @@ type Configuration struct {
 }
 
 type DownloadLink struct {
-	Link     string  `json:"link" bson:"link"`
-	Path     string  `json:"path" bson:"path"`
-	RealPath *string `json:"real_path,omitempty" bson:"real_path,omitempty"` //Will only be used when storing in the DB
+	Link     string  `json:"link" bson:"link" sql:"type:varchar;"`
+	Path     string  `json:"path" bson:"path" sql:"type:varchar;"`
+	RealPath *string `json:"real_path,omitempty" bson:"real_path,omitempty" sql:"type:varchar;"` //Will only be used when storing in the DB
 }
 
 func (d *DownloadLink) String() string {
@@ -90,9 +90,9 @@ type ShareLink struct {
 }
 
 type Command struct {
-	ApiCommand *api.Command
-	User       *string `json:"user,omitempty" bson:"user,omitempty"` //This is only used internally to know who is actually making the request
-	CommandId  string  `json:"command_id" bson:"command_id"`
+	ApiCommand *api.Command `sql:"-"`
+	User       *string      `json:"user,omitempty" bson:"user,omitempty" sql:"type:varchar;"` //This is only used internally to know who is actually making the request
+	CommandId  string       `json:"command_id" bson:"command_id" sql:"type:varchar;"`
 }
 
 func (c *Command) String() string {

@@ -269,7 +269,6 @@ func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.
 		if (ref == elem.Email) || (ref == elem.Login) {
 			if 0 == len(authType) {
 				// No authType specified, this should only be for internal use...
-
 				return elem, strconv.Itoa(i), nil
 			}
 			_, found := elem.Auths[authType]
