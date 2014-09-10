@@ -270,6 +270,8 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 			h := c.getHandler(command.ApiCommand)
 			commandContext := types.CommandContext{command, user, r}
 			uploadPath, size, hErr := h.GetUploadPath(&commandContext)
+			tmp_path := *uploadPath + ".upload"
+			tools.LOG_DEBUG.Println("tmp_path", tmp_path)
 
 			if nil != hErr {
 				errMessage := fmt.Sprintf("Failed to get upload path with error code: %s", hErr.Err)
@@ -279,9 +281,9 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 			}
 			rangeHeader := r.Header.Get("Content-Range")
 
-			if _, err := os.Stat(*uploadPath); err != nil {
+			if _, err := os.Stat(tmp_path); err != nil {
 				if os.IsNotExist(err) {
-					fo, err := os.Create(*uploadPath)
+					fo, err := os.Create(tmp_path)
 					if nil != err {
 						errMessage := fmt.Sprintf("Couldn't create File with error %s", err)
 						http.Error(w, errMessage, http.StatusInternalServerError)
@@ -313,7 +315,7 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 
 				offset = rangeValue.start
 			}
-			f, err := os.OpenFile(*uploadPath, os.O_RDWR, os.ModePerm)
+			f, err := os.OpenFile(tmp_path, os.O_RDWR, os.ModePerm)
 			if nil != err {
 				errMessage := fmt.Sprintf("Failed to open file with error %s", err)
 				tools.LOG_ERROR.Println(errMessage)
@@ -326,6 +328,14 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 			command.ApiCommand.State.Progress = int((offset + chunk_offset + int64(read_size)) * 100 / size)
 			if 100 == command.ApiCommand.State.Progress {
 				command.ApiCommand.State.Status = api.COMMAND_STATUS_DONE
+				//rename file
+				tools.LOG_DEBUG.Println("rename", tmp_path, "in ", *uploadPath)
+				err = os.Rename(tmp_path, *uploadPath)
+				if err != nil {
+					errMessage := fmt.Sprintf("Failed to rename the file: %s", err)
+					tools.LOG_ERROR.Println(errMessage)
+					http.Error(w, errMessage, http.StatusBadRequest)
+				}
 			}
 			chunk_offset += int64(read_size)
 		}
