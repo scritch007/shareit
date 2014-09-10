@@ -441,12 +441,7 @@ func (d *SqliteDatabase) RemoveSession(ref string) (err error) {
 func (d *SqliteDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
-	//check if there is already a sharelink with this name and user
-	var count int
-	err = d.db.Model(Share{}).Table("shares").Where("name = ?", shareLink.ShareLink.Name).Where("user = ?", shareLink.User).Count(&count).Error
-	if (err != nil) || (count != 0) {
-		return errors.New("ShareLink already exists")
-	}
+	//Todo check if there is already a sharelink with this name and user
 	share := Share{Name: shareLink.ShareLink.Name, Path: shareLink.ShareLink.Path,
 		Key: shareLink.ShareLink.Key, User: shareLink.User,
 		UserList: shareLink.ShareLink.UserList, Type: shareLink.ShareLink.Type,
