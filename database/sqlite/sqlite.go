@@ -42,13 +42,20 @@ type pathAccesses struct {
 }
 
 type Share struct {
-	User     string                `sql:"type:varchar;"` //This will only be set by server. This is the user that issued the share link
-	Name     *string               `sql:"type:varchar;"` // Name used for displaying the share link if multiple share links available
-	Path     *string               `sql:"type:varchar;"` // Can be empty only if ShareLinkKey is provided
-	Key      *string               `sql:"type:varchar;"` // Can be empty only for a creation or on a Get
-	UserList *[]string             `sql:"type:varchar;"` // This is only available for EnumRestricted mode
-	Type     api.EnumShareLinkType `sql:"type:integer;"`
-	Access   *api.AccessType       `sql:"type:integer;"` // What access would people coming with this link have
+	User string  `sql:"type:varchar;"` //This will only be set by server. This is the user that issued the share link
+	Name *string `sql:"type:varchar;"` // Name used for displaying the share link if multiple share links available
+	Path *string `sql:"type:varchar;"` // Can be empty only if ShareLinkKey is provided
+	Key  *string `sql:"type:varchar;"` // Can be empty only for a creation or on a Get
+	// UserList *[]string             `sql:"type:varchar;"` // This is only available for EnumRestricted mode
+	Type   api.EnumShareLinkType `sql:"type:integer;"`
+	Access *api.AccessType       `sql:"type:integer;"` // What access would people coming with this link have
+	Id     string                `sql:"type:varchar;"`
+}
+
+type AllowedUserShare struct {
+	User    string  `sql:"type:varchar;"`
+	ShareId string  `sql:"type:varchar;"`
+	Key     *string `sql:"type:varchar;"` // Can be empty only for a creation or on a Get
 }
 
 type SqliteDatabase struct {
@@ -71,7 +78,7 @@ func NewSqliteDatase(config *json.RawMessage) (d *SqliteDatabase, err error) {
 	db.DB().SetMaxIdleConns(10)
 
 	// Create tables if not exist
-	values := []interface{}{&types.Command{}, &types.DownloadLink{}, &UserSpecificAuth{}, &User{}, &types.Session{}, &Share{}, &pathAccesses{}}
+	values := []interface{}{&types.Command{}, &types.DownloadLink{}, &UserSpecificAuth{}, &User{}, &types.Session{}, &Share{}, &AllowedUserShare{}, &pathAccesses{}}
 	for _, value := range values {
 		if db.HasTable(value) != true {
 			if err := db.CreateTable(value).Error; err != nil {
@@ -442,15 +449,28 @@ func (d *SqliteDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	//Todo check if there is already a sharelink with this name and user
+	var idx int
+	err = d.db.Table("shares").Count(&idx).Error
+	if err != nil {
+		return errors.New("Error during account creation")
+	}
 	share := Share{Name: shareLink.ShareLink.Name, Path: shareLink.ShareLink.Path,
 		Key: shareLink.ShareLink.Key, User: shareLink.User,
-		UserList: shareLink.ShareLink.UserList, Type: shareLink.ShareLink.Type,
+		Id: strconv.Itoa(idx + 1), Type: shareLink.ShareLink.Type,
 		Access: shareLink.ShareLink.Access}
-
 	err = d.db.Table("shares").Create(&share).Error
 	if err != nil {
 		return errors.New("Register SaveShareLink error")
 	}
+
+	for _, value := range *shareLink.ShareLink.UserList {
+		user := AllowedUserShare{User: value, ShareId: strconv.Itoa(idx + 1), Key: shareLink.ShareLink.Key}
+		err = d.db.Table("allowed_user_shares").Create(&user).Error
+		if err != nil {
+			return errors.New("Register SaveShareLink error")
+		}
+	}
+
 	return nil
 }
 
@@ -464,11 +484,24 @@ func (d *SqliteDatabase) GetShareLink(key string) (shareLink *types.ShareLink, e
 		d.Log(ERROR, message)
 		return nil, errors.New(message)
 	}
+
+	var users []AllowedUserShare
+	err = d.db.Model(AllowedUserShare{}).Table("allowed_user_shares").Where("key = ?", key).Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	allowed_user := make([]string, len(users))
+	idx := 0
+	for _, user := range users {
+		allowed_user[idx] = user.User
+		idx += 1
+	}
+
 	link := api.ShareLink{
 		Name:     share.Name,
 		Path:     share.Path,
 		Key:      share.Key,
-		UserList: share.UserList,
+		UserList: &allowed_user,
 		Type:     share.Type,
 		Access:   share.Access,
 	}
@@ -484,6 +517,10 @@ func (d *SqliteDatabase) RemoveShareLink(key string) (err error) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	err = d.db.Table("shares").Where("key = ?", key).Delete(Share{}).Error
+	if err != nil {
+		return err
+	}
+	err = d.db.Table("allowed_user_shares").Where("key = ?", key).Delete(AllowedUserShare{}).Error
 	if err != nil {
 		return err
 	}
@@ -510,11 +547,22 @@ func (d *SqliteDatabase) listShareLinks(user string) (shareLinks []*types.ShareL
 	index := 0
 
 	for _, result := range results {
+		var users []AllowedUserShare
+		err = d.db.Model(AllowedUserShare{}).Table("allowed_user_shares").Where("key = ?", result.Key).Find(&users).Error
+		if err != nil {
+			return nil, err
+		}
+		allowed_user := make([]string, len(users))
+		idx := 0
+		for _, user := range users {
+			allowed_user[idx] = user.User
+			idx += 1
+		}
 		link := api.ShareLink{
 			Name:     result.Name,
 			Path:     result.Path,
 			Key:      result.Key,
-			UserList: result.UserList,
+			UserList: &allowed_user,
 			Type:     result.Type,
 			Access:   result.Access,
 		}

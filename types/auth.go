@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"io"
 	"net/http"
 )
@@ -65,11 +66,6 @@ func (auth *Authentication) GetAvailableAuthentications() []string {
 	return res
 }
 
-type RespAccount struct {
-	DisplayName string `json:"name"`
-	Id          string `json:"id"`
-}
-
 func (auth *Authentication) ListUsers(w http.ResponseWriter, r *http.Request) {
 	user, err := auth.GetAuthenticatedUser(w, r)
 	if nil == user {
@@ -89,10 +85,12 @@ func (auth *Authentication) ListUsers(w http.ResponseWriter, r *http.Request) {
 		searchParameters["id"] = search
 	}
 	accounts, err := auth.Config.Db.ListAccounts(searchParameters)
-	resp := make([]RespAccount, len(accounts))
+	resp := make([]api.Account, len(accounts))
 	for i, account := range accounts {
-		resp[i].DisplayName = account.Login
+		resp[i].Login = account.Login
 		resp[i].Id = account.Id
+		resp[i].IsAdmin = account.IsAdmin
+		resp[i].Email = account.Email
 	}
 	//var tempResult []*Account
 	b, _ := json.Marshal(resp)

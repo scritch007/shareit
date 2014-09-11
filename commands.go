@@ -92,7 +92,12 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = json.Unmarshal(input, command)
-
+	if nil != err {
+		//TODO Set erro Code
+		errMessage := fmt.Sprintf("2 Failed with error code: %s", err)
+		tools.LOG_ERROR.Println(errMessage)
+		http.Error(w, errMessage, http.StatusBadRequest)
+	}
 	backendCommand := new(types.Command)
 	backendCommand.ApiCommand = command
 	if nil != user {
@@ -100,9 +105,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	} else {
 		backendCommand.User = nil
 	}
-	if nil != err {
-		//TODO Set erro Code
-	}
+
 	channel := make(chan types.EnumCommandHandlerStatus)
 	command.State.Progress = 0
 	command.State.ErrorCode = 0
