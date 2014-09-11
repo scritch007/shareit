@@ -44,10 +44,7 @@ type AccountSpecificAuth struct {
 	Blob     string `json:"specific"`
 }
 type Account struct {
-	Login   string `json:"login"`
-	Email   string `json:"email"`
-	Id      string `json:"id"`       //This id should be unique depending on the DbType
-	IsAdmin bool   `json:"is_admin"` //Can only be changed by the admin
+	ApiAccount api.Account
 	//Add some other infos here for all the specific stuffs
 	Auths map[string]AccountSpecificAuth
 }

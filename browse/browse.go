@@ -86,7 +86,7 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 		resp <- types.EnumCommandHandlerError
 		return
 	}
-	asUser := nil == context.Account || !context.Account.IsAdmin
+	asUser := nil == context.Account || !context.Account.ApiAccount.IsAdmin
 
 	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.Delete.Input.Path, asUser)
 
@@ -160,7 +160,7 @@ func (b *BrowseHandler) createFolderCommand(context *types.CommandContext, resp 
 		resp <- types.EnumCommandHandlerError
 		return
 	}
-	asUser := nil == context.Account || !context.Account.IsAdmin
+	asUser := nil == context.Account || !context.Account.ApiAccount.IsAdmin
 	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.CreateFolder.Input.Path, asUser)
 
 	if api.ERROR_NO_ERROR != accessPath.Error {
@@ -205,7 +205,7 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 		return
 	}
 
-	asUser := nil == context.Account || !context.Account.IsAdmin
+	asUser := nil == context.Account || !context.Account.ApiAccount.IsAdmin
 
 	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.UploadFile.Input.Path, asUser)
 
@@ -246,7 +246,7 @@ func (b *BrowseHandler) thumbnailCommand(context *types.CommandContext, resp cha
 		return
 	}
 
-	asUser := nil == context.Account || !context.Account.IsAdmin
+	asUser := nil == context.Account || !context.Account.ApiAccount.IsAdmin
 
 	accessPath, _ := auth.GetAccessAndPath(b.config, context, command.Browser.Thumbnail.Input.Path, asUser)
 
@@ -291,7 +291,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 		return
 	}
 	asUser := true
-	if nil != context.Account && context.Account.IsAdmin {
+	if nil != context.Account && context.Account.ApiAccount.IsAdmin {
 		//TODO checkt he asUser request header
 		asUser = false
 	}
@@ -326,7 +326,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 		var access api.AccessType
 		for _, file := range fileList {
 			s := api.StorageItem{Name: file.Name(), IsDir: file.IsDir(), MDate: file.ModTime().Unix()}
-			if "." == string(file.Name()[0]) && (nil == command.Browser.List.Input.ShowHiddenFiles || !*command.Browser.List.Input.ShowHiddenFiles){
+			if "." == string(file.Name()[0]) && (nil == command.Browser.List.Input.ShowHiddenFiles || !*command.Browser.List.Input.ShowHiddenFiles) {
 				continue
 			}
 			if !file.IsDir() {
@@ -355,7 +355,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 			result[counter] = s
 			counter++
 		}
-	}else{
+	} else {
 		//Force the name for the display
 		command.Browser.List.Output.CurrentItem.Name = accessPath.FileInfo.Name()
 	}

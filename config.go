@@ -141,9 +141,9 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 			//This means we don't have any account
 			account := new(types.Account)
 			account.Auths = make(map[string]types.AccountSpecificAuth)
-			account.Login = c.RootUser.Login
-			account.Email = c.RootUser.Email
-			account.IsAdmin = true
+			account.ApiAccount.Login = c.RootUser.Login
+			account.ApiAccount.Email = c.RootUser.Email
+			account.ApiAccount.IsAdmin = true
 			authSpecific := types.AccountSpecificAuth{AuthType: dummy.Name, Blob: c.RootUser.Password}
 			account.Auths[dummy.Name] = authSpecific
 			//TODO This should be the sha1 from the password
@@ -153,8 +153,8 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 				os.Exit(4)
 			}
 		} else {
-			if !account.IsAdmin {
-				account.IsAdmin = true
+			if !account.ApiAccount.IsAdmin {
+				account.ApiAccount.IsAdmin = true
 				err = resultConfig.Db.UpdateAccount(id, account)
 				if nil != err {
 					fmt.Println("Failed to update the root account")

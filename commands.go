@@ -66,7 +66,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		// We want to list the commands that have been already answered
 		var userName *string = nil
 		if nil != user {
-			userName = &user.Id
+			userName = &user.ApiAccount.Id
 		}
 		commands, _, err := c.config.Db.ListCommands(userName, 0, -1, nil)
 		if nil != err {
@@ -94,7 +94,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	backendCommand := new(types.Command)
 	backendCommand.ApiCommand = command
 	if nil != user {
-		backendCommand.User = &user.Id //Store current user
+		backendCommand.User = &user.ApiAccount.Id //Store current user
 	} else {
 		backendCommand.User = nil
 	}
@@ -221,7 +221,7 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ref := vars["command_id"]
 	command, err := c.config.Db.GetCommand(ref)
-	if nil != command.User && (nil == user || *command.User != user.Id) {
+	if nil != command.User && (nil == user || *command.User != user.ApiAccount.Id) {
 		http.Error(w, "You are trying to access some resources that do not belong to you", http.StatusUnauthorized)
 		return
 	}
