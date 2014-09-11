@@ -75,6 +75,23 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 			access = *share_link.ShareLink.Access
 		}
 		//TODO add some check depending on the type of share_link...
+		if share_link.ShareLink.Type == api.EnumRestricted {
+			if context.Command.User == nil {
+				accessPath.Error = api.ERROR_NOT_ALLOWED
+				return accessPath, nil
+			}
+			is_allowed := false
+			for _, user_id := range *share_link.ShareLink.UserList {
+				if *context.Command.User == user_id {
+					is_allowed = true
+					break
+				}
+			}
+			if is_allowed != true {
+				accessPath.Error = api.ERROR_NOT_ALLOWED
+				return accessPath, nil
+			}
+		}
 
 		//Check if share_link is a directory if not check that basename/dirname are correct
 		fileInfo, err := os.Lstat(path.Join(config.RootPrefix, chroot))
