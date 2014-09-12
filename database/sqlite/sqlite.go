@@ -464,7 +464,7 @@ func (d *SqliteDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	if err != nil {
 		return errors.New("Register SaveShareLink error")
 	}
-	if shareLink.ShareLink.UserList != nil {
+	if shareLink.ShareLink.Type == api.EnumRestricted && shareLink.ShareLink.UserList != nil {
 		for _, value := range *shareLink.ShareLink.UserList {
 			user := AllowedUserShare{User: value, ShareId: strconv.Itoa(idx + 1), Key: shareLink.ShareLink.Key}
 			err = d.db.Table("allowed_user_shares").Create(&user).Error
@@ -489,10 +489,15 @@ func (d *SqliteDatabase) GetShareLink(key string) (shareLink *types.ShareLink, e
 	}
 
 	var users []AllowedUserShare
-	err = d.db.Model(AllowedUserShare{}).Table("allowed_user_shares").Where("key = ?", key).Find(&users).Error
-
-	allowed_user := make([]string, 0, len(users))
-	if len(users) != 0 {
+	var allowed_user []string
+	if share.Type == api.EnumRestricted {
+		err = d.db.Model(AllowedUserShare{}).Table("allowed_user_shares").Where("key = ?", key).Find(&users).Error
+		if err != nil {
+			message := fmt.Sprintf("Couldn't find share link %s", key)
+			d.Log(ERROR, message)
+			return nil, errors.New(message)
+		}
+		allowed_user = make([]string, len(users))
 		idx := 0
 		for _, user := range users {
 			allowed_user[idx] = user.User
@@ -548,9 +553,10 @@ func (d *SqliteDatabase) listShareLinks(user string) (shareLinks []*types.ShareL
 
 	for _, result := range results {
 		var users []AllowedUserShare
-		d.db.Model(AllowedUserShare{}).Table("allowed_user_shares").Where("key = ?", result.Key).Find(&users)
-		allowed_user := make([]string, 0, len(users))
-		if len(users) != 0 {
+		var allowed_user []string
+		if result.Type == api.EnumRestricted {
+			d.db.Model(AllowedUserShare{}).Table("allowed_user_shares").Where("key = ?", result.Key).Find(&users)
+			allowed_user = make([]string, len(users))
 			idx := 0
 			for _, user := range users {
 				allowed_user[idx] = user.User
