@@ -107,8 +107,15 @@ func (auth *DummyAuth) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	}
 	challenge.timer.Stop()
 	delete(auth.challengeMap, refInt)
-	result := api.RequestDummyAuthOutput{AuthenticationHeader: account.ApiAccount.Email, MySelf: account.ApiAccount}
-	session := types.Session{AuthenticationHeader: result.AuthenticationHeader, UserId: account.ApiAccount.Id}
+	var apiAccount api.Account
+	err = types.AccountBackend2Api(account, &apiAccount)
+	if nil != err {
+		tools.LOG_ERROR.Println("Convertion from backend Account to api Account failed")
+		http.Error(w, "Couldn't save session", http.StatusUnauthorized)
+		return
+	}
+	result := api.RequestDummyAuthOutput{AuthenticationHeader: account.Email, MySelf: apiAccount}
+	session := types.Session{AuthenticationHeader: result.AuthenticationHeader, UserId: account.Id}
 	err = auth.config.Db.StoreSession(&session)
 	if nil != err {
 		tools.LOG_ERROR.Println("Couldn't save session")
@@ -137,12 +144,12 @@ func (auth *DummyAuth) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	account := new(types.Account)
 	account.Auths = make(map[string]types.AccountSpecificAuth)
-	account.ApiAccount.Login = create.Login
-	account.ApiAccount.Email = create.Email
+	account.Login = create.Login
+	account.Email = create.Email
 	if nil == create.IsAdmin {
-		account.ApiAccount.IsAdmin = false
+		account.IsAdmin = false
 	} else {
-		account.ApiAccount.IsAdmin = *create.IsAdmin
+		account.IsAdmin = *create.IsAdmin
 	}
 
 	authSpecific := types.AccountSpecificAuth{AuthType: Name, Blob: create.Password}
@@ -155,7 +162,9 @@ func (auth *DummyAuth) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errMessage, http.StatusInternalServerError)
 		return
 	}
-	result := api.RequestDummyAuthOutput{AuthenticationHeader: account.ApiAccount.Email, MySelf: account.ApiAccount}
+	var apiAccount api.Account
+	err = types.AccountBackend2Api(account, &apiAccount)
+	result := api.RequestDummyAuthOutput{AuthenticationHeader: account.Email, MySelf: apiAccount}
 	b, _ := json.Marshal(result)
 	io.WriteString(w, string(b))
 }

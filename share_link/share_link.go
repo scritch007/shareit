@@ -64,7 +64,7 @@ func (s *ShareLinkHandler) create(context *types.CommandContext, resp chan<- typ
 	sLink.ShareLink = command.ShareLink.Create.Input.ShareLink
 	*sLink.ShareLink.Path = path.Clean(*command.ShareLink.Create.Input.ShareLink.Path)
 
-	sLink.User = context.Account.ApiAccount.Email
+	sLink.User = context.Account.Email
 	if nil == command.ShareLink.Create.Input.ShareLink.Name {
 		sLink.ShareLink.Name = new(string)
 		*sLink.ShareLink.Name = "share_link"

@@ -240,7 +240,7 @@ func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
 	for i < d.accountsId {
 		item = d.accounts[i]
 		i += 1
-		if (item.ApiAccount.Login == account.ApiAccount.Login) || (item.ApiAccount.Email == account.ApiAccount.Email) {
+		if (item.Login == account.Login) || (item.Email == account.Email) {
 			return errors.New("Account already exists")
 		}
 	}
@@ -254,7 +254,7 @@ func (d *DummyDatabase) AddAccount(account *types.Account) (err error) {
 	}
 	//Todo Check that no other account has the same (Id, authType)
 	d.accounts[d.accountsId] = account
-	account.ApiAccount.Id = account.ApiAccount.Email
+	account.Id = account.Email
 	d.accountsId += 1
 
 	d.Log(DEBUG, fmt.Sprintf("%s : %s", "Saved new Account", account))
@@ -266,7 +266,7 @@ func (d *DummyDatabase) GetAccount(authType string, ref string) (account *types.
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 	for i, elem := range d.accounts[0:d.accountsId] {
-		if (ref == elem.ApiAccount.Email) || (ref == elem.ApiAccount.Login) {
+		if (ref == elem.Email) || (ref == elem.Login) {
 			if 0 == len(authType) {
 				// No authType specified, this should only be for internal use...
 				return elem, strconv.Itoa(i), nil
@@ -300,8 +300,8 @@ func (d *DummyDatabase) GetUserAccount(id string) (account *types.Account, err e
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 	for _, elem := range d.accounts[0:d.accountsId] {
-		d.Log(DEBUG, fmt.Sprintf("Looking for %s comparing with %s", id, elem.ApiAccount.Id))
-		if id == elem.ApiAccount.Id {
+		d.Log(DEBUG, fmt.Sprintf("Looking for %s comparing with %s", id, elem.Id))
+		if id == elem.Id {
 			return elem, nil
 		}
 	}
@@ -326,19 +326,19 @@ func (d *DummyDatabase) ListAccounts(searchDict map[string]string) (accounts []*
 		for k, v := range searchDict {
 			switch k {
 			case "login":
-				if strings.Contains(account.ApiAccount.Login, v) {
+				if strings.Contains(account.Login, v) {
 					accounts[i] = account
 					break
 				}
 			case "email":
-				if strings.Contains(account.ApiAccount.Email, v) {
+				if strings.Contains(account.Email, v) {
 
 					accounts[i] = account
 					i += 1
 					break
 				}
 			case "id":
-				if strings.Contains(account.ApiAccount.Id, v) {
+				if strings.Contains(account.Id, v) {
 					accounts[i] = account
 					i += 1
 					break

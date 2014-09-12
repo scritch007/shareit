@@ -87,10 +87,7 @@ func (auth *Authentication) ListUsers(w http.ResponseWriter, r *http.Request) {
 	accounts, err := auth.Config.Db.ListAccounts(searchParameters)
 	resp := make([]api.Account, len(accounts))
 	for i, account := range accounts {
-		resp[i].Login = account.ApiAccount.Login
-		resp[i].Id = account.ApiAccount.Id
-		resp[i].IsAdmin = account.ApiAccount.IsAdmin
-		resp[i].Email = account.ApiAccount.Email
+		AccountBackend2Api(account, &resp[i])
 	}
 	//var tempResult []*Account
 	b, _ := json.Marshal(resp)

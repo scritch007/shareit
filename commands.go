@@ -68,7 +68,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		// We want to list the commands that have been already answered
 		var userName *string = nil
 		if nil != user {
-			userName = &user.ApiAccount.Id
+			userName = &user.Id
 		}
 		commands, _, err := c.config.Db.ListCommands(userName, 0, -1, nil)
 		if nil != err {
@@ -101,7 +101,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	backendCommand := new(types.Command)
 	backendCommand.ApiCommand = command
 	if nil != user {
-		backendCommand.User = &user.ApiAccount.Id //Store current user
+		backendCommand.User = &user.Id //Store current user
 	} else {
 		backendCommand.User = nil
 	}
