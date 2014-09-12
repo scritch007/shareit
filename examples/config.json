@@ -44,6 +44,9 @@
 				{
 					"name": "/npm-8585",
 					"access": 1
+				},{
+					"name": "/Images",
+					"access": 2
 				}
 			]
 		}

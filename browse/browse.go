@@ -326,7 +326,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 		var access api.AccessType
 		for _, file := range fileList {
 			s := api.StorageItem{Name: file.Name(), IsDir: file.IsDir(), MDate: file.ModTime().Unix()}
-			if "." == string(file.Name()[0]) && (nil == command.Browser.List.Input.ShowHiddenFiles || !*command.Browser.List.Input.ShowHiddenFiles){
+			if "." == string(file.Name()[0]) && (nil == command.Browser.List.Input.ShowHiddenFiles || !*command.Browser.List.Input.ShowHiddenFiles) {
 				continue
 			}
 			if !file.IsDir() {
@@ -355,7 +355,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 			result[counter] = s
 			counter++
 		}
-	}else{
+	} else {
 		//Force the name for the display
 		command.Browser.List.Output.CurrentItem.Name = accessPath.FileInfo.Name()
 	}

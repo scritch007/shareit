@@ -226,6 +226,7 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ref := vars["command_id"]
 	command, err := c.config.Db.GetCommand(ref)
+
 	if nil != err {
 		http.Error(w, fmt.Sprintf("Couldn't get this command ref %s", ref), http.StatusBadRequest)
 		return
