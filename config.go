@@ -49,6 +49,7 @@ type readConfiguration struct {
 	RootUser              *rootUserConfig  `json:"root_user"`      //Used for the admin config. If not specified, then noone will be allowed to change the configuration
 	UserAccesses          *[]userAccesses  `json:"user_accesses"`  //Can be empty if allow_changing_accesses is set to true. Otherwise should be set
 	AllowChangingAccesses bool             `json:"allow_changing_accesses"`
+	UploadChunkSize       int64            `json:"upload_chunk_size"`
 }
 
 func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Configuration) {
@@ -100,6 +101,7 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 	resultConfig.PrivateKey = c.PrivateKey
 	resultConfig.StaticPath = staticPath
 	resultConfig.WebPort = c.WebPort
+	resultConfig.UploadChunkSize = c.UploadChunkSize
 
 	temp := path.Join(c.HtmlPrefix, "/")
 	if "/" != string(temp[len(temp)-1]) {
@@ -119,19 +121,6 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 	if nil != err {
 		fmt.Println("Error: Error reading authentication configuration", err)
 		os.Exit(3)
-	}
-
-	if !c.AllowChangingAccesses {
-		if nil == c.UserAccesses {
-			fmt.Println("Error: allow_changing_accesses is false and no accesses defined")
-			os.Exit(4)
-		}
-		for _, elem := range *c.UserAccesses {
-			user_name := elem.User
-			for _, access := range elem.Accesses {
-				resultConfig.Db.SetAccess(user_name, access.Name, access.Access)
-			}
-		}
 	}
 
 	//Now create the root account if if doesn't exist
@@ -164,6 +153,28 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 		}
 
 	}
+
+	if !c.AllowChangingAccesses {
+
+		if nil == c.UserAccesses {
+			fmt.Println("Error: allow_changing_accesses is false and no accesses defined")
+			os.Exit(4)
+		}
+		for _, elem := range *c.UserAccesses {
+			user_id := ""
+			if elem.User != nil && *elem.User != "" {
+				_, user_id, err = resultConfig.Db.GetAccount(dummy.Name, *elem.User)
+				if err != nil {
+					fmt.Println("Error: Account not found", *elem.User)
+					continue
+				}
+			}
+			for _, access := range elem.Accesses {
+				resultConfig.Db.SetAccess(&user_id, access.Name, access.Access)
+			}
+		}
+	}
+
 	resultConfig.AllowRootWrite = c.AllowRootWrite
 	return resultConfig
 }

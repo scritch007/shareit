@@ -25,9 +25,10 @@ import (
 //ServeContent(w ResponseWriter, req *Request, name string, modtime time.Time, content io.ReadSeeker)
 //CommandHandler is used to keep information about issued commands
 type CommandHandler struct {
-	config    *types.Configuration
-	shareLink *share_link.ShareLinkHandler
-	browser   *browse.BrowseHandler
+	config          *types.Configuration
+	shareLink       *share_link.ShareLinkHandler
+	browser         *browse.BrowseHandler
+	UploadChunkSize int64 `json:"upload_chunk_size"`
 }
 
 func (c *CommandHandler) save(command *types.Command) error {
@@ -40,6 +41,7 @@ func NewCommandHandler(config *types.Configuration) (c *CommandHandler) {
 	c.config = config
 	c.shareLink = share_link.NewShareLinkHandler(config)
 	c.browser = browse.NewBrowseHandler(config)
+	c.UploadChunkSize = int64(config.UploadChunkSize)
 	return c
 }
 
@@ -90,7 +92,12 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = json.Unmarshal(input, command)
-
+	if nil != err {
+		//TODO Set erro Code
+		errMessage := fmt.Sprintf("2 Failed with error code: %s", err)
+		tools.LOG_ERROR.Println(errMessage)
+		http.Error(w, errMessage, http.StatusBadRequest)
+	}
 	backendCommand := new(types.Command)
 	backendCommand.ApiCommand = command
 	if nil != user {
@@ -98,9 +105,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	} else {
 		backendCommand.User = nil
 	}
-	if nil != err {
-		//TODO Set erro Code
-	}
+
 	channel := make(chan types.EnumCommandHandlerStatus)
 	command.State.Progress = 0
 	command.State.ErrorCode = 0
@@ -221,14 +226,16 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ref := vars["command_id"]
 	command, err := c.config.Db.GetCommand(ref)
-	if nil != command.User && (nil == user || *command.User != user.ApiAccount.Id) {
-		http.Error(w, "You are trying to access some resources that do not belong to you", http.StatusUnauthorized)
-		return
-	}
+
 	if nil != err {
 		http.Error(w, fmt.Sprintf("Couldn't get this command ref %s", ref), http.StatusBadRequest)
 		return
 	}
+	if nil != command.User && (nil == user || *command.User != user.Id) {
+		http.Error(w, "You are trying to access some resources that do not belong to you", http.StatusUnauthorized)
+		return
+	}
+
 	if "GET" == r.Method {
 		b, _ := json.Marshal(command)
 		io.WriteString(w, string(b))
@@ -238,73 +245,103 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Command already completed", http.StatusUnauthorized)
 			return
 		}
-		input, err := ioutil.ReadAll(r.Body)
-		tools.LOG_DEBUG.Println("Received ", len(input), "bytes")
-		if nil != err {
-			errMessage := fmt.Sprintf("1 Failed with error code: %s", err)
-			tools.LOG_ERROR.Println(errMessage)
-			http.Error(w, errMessage, http.StatusBadRequest)
-			return
-		}
-		h := c.getHandler(command.ApiCommand)
-		commandContext := types.CommandContext{command, user, r}
-		uploadPath, size, hErr := h.GetUploadPath(&commandContext)
+		// make a buffer to keep chunks that are read
+		buf := make([]byte, 0, c.UploadChunkSize)
+		total_size := r.ContentLength
+		var chunk_offset int64
+		var buf_dim int64
+		chunk_offset = int64(0)
+		for {
+			rest := total_size - chunk_offset
+			if rest == 0 {
+				// EOF
+				break
+			}
+			if rest > c.UploadChunkSize {
+				buf_dim = c.UploadChunkSize
+			} else {
+				buf_dim = rest
+			}
 
-		if nil != hErr {
-			errMessage := fmt.Sprintf("Failed to get upload path with error code: %s", hErr.Err)
-			tools.LOG_ERROR.Println(errMessage)
-			http.Error(w, errMessage, hErr.Status)
-			return
-		}
-		rangeHeader := r.Header.Get("Content-Range")
+			read_size, err := io.ReadFull(r.Body, buf[:buf_dim])
+			if nil != err {
+				errMessage := fmt.Sprintf("1 Failed with error code: %s", err)
+				tools.LOG_ERROR.Println(errMessage)
+				http.Error(w, errMessage, http.StatusBadRequest)
+				return
+			}
+			tools.LOG_DEBUG.Println("Received ", read_size, "bytes")
+			h := c.getHandler(command.ApiCommand)
+			commandContext := types.CommandContext{command, user, r}
+			uploadPath, size, hErr := h.GetUploadPath(&commandContext)
+			tmp_path := *uploadPath + ".upload"
+			tools.LOG_DEBUG.Println("tmp_path", tmp_path)
 
-		if _, err := os.Stat(*uploadPath); err != nil {
-			if os.IsNotExist(err) {
-				fo, err := os.Create(*uploadPath)
-				if nil != err {
-					errMessage := fmt.Sprintf("Couldn't create File with error %s", err)
+			if nil != hErr {
+				errMessage := fmt.Sprintf("Failed to get upload path with error code: %s", hErr.Err)
+				tools.LOG_ERROR.Println(errMessage)
+				http.Error(w, errMessage, hErr.Status)
+				return
+			}
+			rangeHeader := r.Header.Get("Content-Range")
+
+			if _, err := os.Stat(tmp_path); err != nil {
+				if os.IsNotExist(err) {
+					fo, err := os.Create(tmp_path)
+					if nil != err {
+						errMessage := fmt.Sprintf("Couldn't create File with error %s", err)
+						http.Error(w, errMessage, http.StatusInternalServerError)
+						return
+					}
+					fo.Close()
+				} else {
+					errMessage := fmt.Sprintf("Couldn't read stat with error %s", err)
+					tools.LOG_ERROR.Println(errMessage)
 					http.Error(w, errMessage, http.StatusInternalServerError)
 					return
 				}
-				fo.Close()
-			} else {
-				errMessage := fmt.Sprintf("Couldn't read stat with error %s", err)
+			}
+			var offset int64 = 0
+			if 0 != len(rangeHeader) {
+				rangeValue, err := parseRange(rangeHeader, size)
+				if nil != err {
+					errMessage := fmt.Sprintf("Incorrect Range header %s", err.Error())
+					tools.LOG_ERROR.Println(errMessage)
+					http.Error(w, errMessage, http.StatusBadRequest)
+					return
+				}
+				if size < rangeValue.start {
+					errMessage := fmt.Sprintf("Couldn't seek to requested offset %d", rangeValue.start)
+					tools.LOG_ERROR.Println(errMessage)
+					http.Error(w, errMessage, http.StatusBadRequest)
+					return
+				}
+
+				offset = rangeValue.start
+			}
+			f, err := os.OpenFile(tmp_path, os.O_RDWR, os.ModePerm)
+			if nil != err {
+				errMessage := fmt.Sprintf("Failed to open file with error %s", err)
 				tools.LOG_ERROR.Println(errMessage)
 				http.Error(w, errMessage, http.StatusInternalServerError)
 				return
 			}
-		}
-		var offset int64 = 0
-		if 0 != len(rangeHeader) {
-			rangeValue, err := parseRange(rangeHeader, size)
-			if nil != err {
-				errMessage := fmt.Sprintf("Incorrect Range header %s", err.Error())
-				tools.LOG_ERROR.Println(errMessage)
-				http.Error(w, errMessage, http.StatusBadRequest)
-				return
+			defer f.Close()
+			f.Seek(offset+chunk_offset, os.SEEK_SET)
+			io.WriteString(f, string(buf[:read_size]))
+			command.ApiCommand.State.Progress = int((offset + chunk_offset + int64(read_size)) * 100 / size)
+			if 100 == command.ApiCommand.State.Progress {
+				command.ApiCommand.State.Status = api.COMMAND_STATUS_DONE
+				//rename file
+				tools.LOG_DEBUG.Println("rename", tmp_path, "in ", *uploadPath)
+				err = os.Rename(tmp_path, *uploadPath)
+				if err != nil {
+					errMessage := fmt.Sprintf("Failed to rename the file: %s", err)
+					tools.LOG_ERROR.Println(errMessage)
+					http.Error(w, errMessage, http.StatusBadRequest)
+				}
 			}
-			if size < rangeValue.start {
-				errMessage := fmt.Sprintf("Couldn't seek to requested offset %d", rangeValue.start)
-				tools.LOG_ERROR.Println(errMessage)
-				http.Error(w, errMessage, http.StatusBadRequest)
-				return
-			}
-
-			offset = rangeValue.start
-		}
-		f, err := os.OpenFile(*uploadPath, os.O_RDWR, os.ModePerm)
-		if nil != err {
-			errMessage := fmt.Sprintf("Failed to open file with error %s", err)
-			tools.LOG_ERROR.Println(errMessage)
-			http.Error(w, errMessage, http.StatusInternalServerError)
-			return
-		}
-		defer f.Close()
-		f.Seek(offset, os.SEEK_SET)
-		io.WriteString(f, string(input))
-		command.ApiCommand.State.Progress = int((offset + int64(len(input))) * 100 / size)
-		if 100 == command.ApiCommand.State.Progress {
-			command.ApiCommand.State.Status = api.COMMAND_STATUS_DONE
+			chunk_offset += int64(read_size)
 		}
 	}
 }
