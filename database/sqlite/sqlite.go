@@ -48,7 +48,7 @@ type Share struct {
 	Key  *string `sql:"type:varchar;"` // Can be empty only for a creation or on a Get
 	// UserList *[]string             `sql:"type:varchar;"` // This is only available for EnumRestricted mode
 	Type   api.EnumShareLinkType `sql:"type:integer;"`
-	Access *api.AccessType       `sql:"type:integer;"` // What access would people coming with this link have
+	Access api.AccessType        `sql:"type:integer;"` // What access would people coming with this link have
 	Id     string                `sql:"type:varchar;"`
 }
 
@@ -454,20 +454,23 @@ func (d *SqliteDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	if err != nil {
 		return errors.New("Error during account creation")
 	}
+	access := *shareLink.ShareLink.Access
+
 	share := Share{Name: shareLink.ShareLink.Name, Path: shareLink.ShareLink.Path,
 		Key: shareLink.ShareLink.Key, User: shareLink.User,
 		Id: strconv.Itoa(idx + 1), Type: shareLink.ShareLink.Type,
-		Access: shareLink.ShareLink.Access}
+		Access: access}
 	err = d.db.Table("shares").Create(&share).Error
 	if err != nil {
 		return errors.New("Register SaveShareLink error")
 	}
-
-	for _, value := range *shareLink.ShareLink.UserList {
-		user := AllowedUserShare{User: value, ShareId: strconv.Itoa(idx + 1), Key: shareLink.ShareLink.Key}
-		err = d.db.Table("allowed_user_shares").Create(&user).Error
-		if err != nil {
-			return errors.New("Register SaveShareLink error")
+	if shareLink.ShareLink.UserList != nil {
+		for _, value := range *shareLink.ShareLink.UserList {
+			user := AllowedUserShare{User: value, ShareId: strconv.Itoa(idx + 1), Key: shareLink.ShareLink.Key}
+			err = d.db.Table("allowed_user_shares").Create(&user).Error
+			if err != nil {
+				return errors.New("Register SaveShareLink error")
+			}
 		}
 	}
 
@@ -487,14 +490,14 @@ func (d *SqliteDatabase) GetShareLink(key string) (shareLink *types.ShareLink, e
 
 	var users []AllowedUserShare
 	err = d.db.Model(AllowedUserShare{}).Table("allowed_user_shares").Where("key = ?", key).Find(&users).Error
-	if err != nil {
-		return nil, err
-	}
-	allowed_user := make([]string, len(users))
-	idx := 0
-	for _, user := range users {
-		allowed_user[idx] = user.User
-		idx += 1
+
+	allowed_user := make([]string, 0, len(users))
+	if len(users) != 0 {
+		idx := 0
+		for _, user := range users {
+			allowed_user[idx] = user.User
+			idx += 1
+		}
 	}
 
 	link := api.ShareLink{
@@ -503,7 +506,7 @@ func (d *SqliteDatabase) GetShareLink(key string) (shareLink *types.ShareLink, e
 		Key:      share.Key,
 		UserList: &allowed_user,
 		Type:     share.Type,
-		Access:   share.Access,
+		Access:   &share.Access,
 	}
 	sharelink := types.ShareLink{
 		User:      share.User,
@@ -520,10 +523,7 @@ func (d *SqliteDatabase) RemoveShareLink(key string) (err error) {
 	if err != nil {
 		return err
 	}
-	err = d.db.Table("allowed_user_shares").Where("key = ?", key).Delete(AllowedUserShare{}).Error
-	if err != nil {
-		return err
-	}
+	d.db.Table("allowed_user_shares").Where("key = ?", key).Delete(AllowedUserShare{})
 	return nil
 }
 
@@ -548,15 +548,14 @@ func (d *SqliteDatabase) listShareLinks(user string) (shareLinks []*types.ShareL
 
 	for _, result := range results {
 		var users []AllowedUserShare
-		err = d.db.Model(AllowedUserShare{}).Table("allowed_user_shares").Where("key = ?", result.Key).Find(&users).Error
-		if err != nil {
-			return nil, err
-		}
-		allowed_user := make([]string, len(users))
-		idx := 0
-		for _, user := range users {
-			allowed_user[idx] = user.User
-			idx += 1
+		d.db.Model(AllowedUserShare{}).Table("allowed_user_shares").Where("key = ?", result.Key).Find(&users)
+		allowed_user := make([]string, 0, len(users))
+		if len(users) != 0 {
+			idx := 0
+			for _, user := range users {
+				allowed_user[idx] = user.User
+				idx += 1
+			}
 		}
 		link := api.ShareLink{
 			Name:     result.Name,
@@ -564,7 +563,7 @@ func (d *SqliteDatabase) listShareLinks(user string) (shareLinks []*types.ShareL
 			Key:      result.Key,
 			UserList: &allowed_user,
 			Type:     result.Type,
-			Access:   result.Access,
+			Access:   &result.Access,
 		}
 		sharelink := types.ShareLink{
 			User:      result.User,

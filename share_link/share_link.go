@@ -69,6 +69,7 @@ func (s *ShareLinkHandler) create(context *types.CommandContext, resp chan<- typ
 		sLink.ShareLink.Name = new(string)
 		*sLink.ShareLink.Name = "share_link"
 	}
+
 	//sLink.Key = *command.ShareLink.Create.Input.ShareLink.Key
 	//sLink.User = command.ShareLink.Create.Input.ShareLink.User
 	//TODO check that the access is correct and is not more then the user actually has access to
