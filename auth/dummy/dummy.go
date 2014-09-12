@@ -52,6 +52,7 @@ func (d *DummyAuth) Name() string {
 func (d *DummyAuth) AddRoutes(r *mux.Router) error {
 	r.HandleFunc(path.Join(d.config.HtmlPrefix, api.RequestDummyAuthUrl), d.HandleAuth).Methods("POST")
 	r.HandleFunc(path.Join(d.config.HtmlPrefix, api.RequestDummyGetChallengeUrl), d.HandleGetChallenge).Methods("GET")
+	r.HandleFunc(path.Join(d.config.HtmlPrefix, api.RequestDummyCreateUrl), d.HandleCreate).Methods("POST")
 	return nil
 }
 
