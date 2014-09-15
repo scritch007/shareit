@@ -41,7 +41,11 @@ func NewCommandHandler(config *types.Configuration) (c *CommandHandler) {
 	c.config = config
 	c.shareLink = share_link.NewShareLinkHandler(config)
 	c.browser = browse.NewBrowseHandler(config)
-	c.UploadChunkSize = int64(config.UploadChunkSize)
+	if int64(config.UploadChunkSize) != 0 {
+		c.UploadChunkSize = int64(config.UploadChunkSize)
+	} else {
+		c.UploadChunkSize = int64(20971520) // set default value to 20Mo
+	}
 	return c
 }
 
@@ -326,7 +330,7 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, errMessage, http.StatusBadRequest)
 				return
 			}
-			tools.LOG_DEBUG.Println("Received ", read_size, "bytes")
+			// tools.LOG_DEBUG.Println("Received ", read_size, "bytes")
 
 			io.WriteString(f, string(buf[:read_size]))
 			command.ApiCommand.State.Progress = int((offset + chunk_offset + int64(read_size)) * 100 / size)
