@@ -154,7 +154,5 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 
 	accessPath.RealPath = &realPath
 	accessPath.Access = access
-
-	tools.LOG_DEBUG.Println("Realpath is ", realPath)
 	return accessPath, nil
 }

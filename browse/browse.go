@@ -33,7 +33,6 @@ func (b *BrowseHandler) Handle(context *types.CommandContext, resp chan<- types.
 	if nil == command.ApiCommand.Browser {
 		return &types.HttpError{Err: errors.New("Missing browse command body"), Status: http.StatusBadRequest}
 	}
-	tools.LOG_DEBUG.Println("Got this command ", command.ApiCommand.Name)
 	if command.ApiCommand.Name == api.EnumBrowserList {
 		go b.browseCommand(context, resp)
 	} else if command.ApiCommand.Name == api.EnumBrowserCreateFolder {
