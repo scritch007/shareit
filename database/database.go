@@ -10,7 +10,7 @@ import (
 	"github.com/scritch007/shareit/types"
 )
 
-func NewDatabase(name string, config *json.RawMessage) (types.DatabaseInterface, error) {
+func NewDatabase(name string, config *json.RawMessage, debug bool) (types.DatabaseInterface, error) {
 	tools.LOG_DEBUG.Println("Creating new instance of database", name)
 	var newDatabase types.DatabaseInterface
 	var err error
@@ -20,7 +20,7 @@ func NewDatabase(name string, config *json.RawMessage) (types.DatabaseInterface,
 	case mongo.Name:
 		newDatabase, err = mongo.NewMongoDatase(config)
 	case sqlite.Name:
-		newDatabase, err = sqlite.NewSqliteDatase(config)
+		newDatabase, err = sqlite.NewSqliteDatase(config, debug)
 	default:
 		err = errors.New("Unknown authentication method " + name)
 		newDatabase = nil

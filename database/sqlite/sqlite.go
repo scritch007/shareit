@@ -67,7 +67,7 @@ type SqliteDatabase struct {
 	commandIndex int
 }
 
-func NewSqliteDatase(config *json.RawMessage) (d *SqliteDatabase, err error) {
+func NewSqliteDatase(config *json.RawMessage, debug bool) (d *SqliteDatabase, err error) {
 	d = new(SqliteDatabase)
 	if err = json.Unmarshal(*config, d); nil != err {
 		return nil, err
@@ -75,11 +75,12 @@ func NewSqliteDatase(config *json.RawMessage) (d *SqliteDatabase, err error) {
 	db, err := gorm.Open("sqlite3", d.Database)
 	d.commandsList = make([]*types.Command, 10)
 	d.commandIndex = 0
-	db.LogMode(true)
+	db.LogMode(debug)
 	db.DB().SetMaxIdleConns(10)
 
 	// Create tables if not exist
-	values := []interface{}{&types.Command{}, &types.DownloadLink{}, &UserSpecificAuth{}, &User{}, &types.Session{}, &Share{}, &AllowedUserShare{}, &pathAccesses{}}
+	// TODO add command in database
+	values := []interface{}{&types.DownloadLink{}, &UserSpecificAuth{}, &User{}, &types.Session{}, &Share{}, &AllowedUserShare{}, &pathAccesses{}}
 	for _, value := range values {
 		if db.HasTable(value) != true {
 			if err := db.CreateTable(value).Error; err != nil {

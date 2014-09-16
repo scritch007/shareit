@@ -69,6 +69,7 @@ type Configuration struct {
 	Db              DatabaseInterface
 	Auth            *Authentication
 	UploadChunkSize int64
+	Debug           bool
 }
 
 type DownloadLink struct {

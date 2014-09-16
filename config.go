@@ -50,6 +50,7 @@ type readConfiguration struct {
 	UserAccesses          *[]userAccesses  `json:"user_accesses"`  //Can be empty if allow_changing_accesses is set to true. Otherwise should be set
 	AllowChangingAccesses bool             `json:"allow_changing_accesses"`
 	UploadChunkSize       int64            `json:"upload_chunk_size"`
+	Debug                 bool             `json:"debug"`
 }
 
 func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Configuration) {
@@ -102,6 +103,7 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 	resultConfig.StaticPath = staticPath
 	resultConfig.WebPort = c.WebPort
 	resultConfig.UploadChunkSize = c.UploadChunkSize
+	resultConfig.Debug = c.Debug
 
 	temp := path.Join(c.HtmlPrefix, "/")
 	if "/" != string(temp[len(temp)-1]) {
@@ -111,7 +113,7 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 	resultConfig.HtmlPrefix = temp
 	//Now Start the Auth and DB configurations...
 
-	resultConfig.Db, err = database.NewDatabase(c.DbConfig.Type, c.DbConfig.Config)
+	resultConfig.Db, err = database.NewDatabase(c.DbConfig.Type, c.DbConfig.Config, resultConfig.Debug)
 	if nil != err {
 		fmt.Println("Error: Error reading database configuration: ", err)
 		os.Exit(2)
