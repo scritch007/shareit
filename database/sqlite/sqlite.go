@@ -24,7 +24,6 @@ const (
 type UserSpecificAuth struct {
 	AuthType string `sql:"type:varchar;"`
 	Blob     string `sql:"type:varchar;"`
-	Id       string `sql:"type:varchar;"`
 	UserId   string `sql:"type:varchar;"`
 }
 
@@ -221,9 +220,7 @@ func (d *SqliteDatabase) addAccount(account *types.Account) (err error) {
 	}
 
 	for key, value := range account.Auths {
-		var idx int
-		d.db.Model(UserSpecificAuth{}).Count(&idx)
-		authentification := UserSpecificAuth{AuthType: key, Blob: value.Blob, UserId: user.Id, Id: strconv.Itoa(idx + 1)}
+		authentification := UserSpecificAuth{AuthType: key, Blob: value.Blob, UserId: user.Id}
 		err = d.db.Table("user_specific_auths").Create(&authentification).Error
 		if err != nil {
 			return errors.New("Error during account creation")
@@ -290,15 +287,40 @@ func (d *SqliteDatabase) UpdateAccount(id string, account *types.Account) (err e
 	if nil != err {
 		return err
 	}
-	err = d.db.Table("users").Where("id = ?", account_id).Delete(User{}).Error
+	var user User
+	err = d.db.Table("users").Where("id = ?", account_id).First(&user).Error
 	if err != nil {
-		return err
+		message := fmt.Sprintf("Couldn't find user:%s", account_id)
+		d.Log(ERROR, message)
+		return errors.New(message)
 	}
+
+	user.Email = account.Email
+	user.IsAdmin = account.IsAdmin
+	// update login?
+	err = d.db.Table("users").Save(&user).Error
+	if err != nil {
+		return errors.New("Update account error")
+	}
+
 	err = d.db.Table("user_specific_auths").Where("user_id = ?", account_id).Delete(UserSpecificAuth{}).Error
 	if err != nil {
 		return err
 	}
-	return d.addAccount(account)
+
+	var auths []UserSpecificAuth
+	err = d.db.Table("user_specific_auths").Where("user_id = ?", account_id).Find(&auths).Error
+	if err != nil {
+		return err
+	}
+	for key, value := range account.Auths {
+		authentification := UserSpecificAuth{AuthType: key, Blob: value.Blob, UserId: user.Id}
+		err = d.db.Table("user_specific_auths").Create(&authentification).Error
+		if err != nil {
+			return errors.New("Error during account creation")
+		}
+	}
+	return nil
 }
 
 func (d *SqliteDatabase) GetUserAccount(id string) (account *types.Account, err error) {
