@@ -93,3 +93,35 @@ func (auth *Authentication) ListUsers(w http.ResponseWriter, r *http.Request) {
 	b, _ := json.Marshal(resp)
 	io.WriteString(w, string(b))
 }
+
+func (auth *Authentication) GetInfo(w http.ResponseWriter, r *http.Request) {
+	key := r.URL.Query().Get("key")
+	shareInfo := api.RequestGetInfoOutput{}
+	if len(key) == 0 {
+		shareInfo.ShareLink = false
+		b, _ := json.Marshal(shareInfo)
+		io.WriteString(w, string(b))
+		return
+	}
+	result, err := auth.Config.Db.GetShareLink(key)
+	if err != nil {
+		shareInfo.ShareLink = false
+		b, _ := json.Marshal(shareInfo)
+		io.WriteString(w, string(b))
+		return
+	}
+	shareInfo.ShareLink = true
+
+	if result.ShareLink.Type == api.EnumShareByKeyAndPassword {
+		shareInfo.PasswordProtected = true
+	} else {
+		shareInfo.PasswordProtected = false
+	}
+
+	shareInfo.NbDownloads = result.ShareLink.NbDownloads
+	shareInfo.Type = result.ShareLink.Type
+	shareInfo.Access = *result.ShareLink.Access
+	shareInfo.ShareAccess = *result.ShareLink.Access
+	b, _ := json.Marshal(shareInfo)
+	io.WriteString(w, string(b))
+}

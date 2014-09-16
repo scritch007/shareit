@@ -129,6 +129,7 @@ func main() {
 	r.HandleFunc(path.Join(config.HtmlPrefix, "auths"), m.authsHandler).Methods("GET")
 	r.HandleFunc(path.Join(config.HtmlPrefix, "auths/logout"), config.Auth.LogOut).Methods("GET")
 	r.HandleFunc(path.Join(config.HtmlPrefix, "auths/list_users"), config.Auth.ListUsers).Methods("GET")
+	r.HandleFunc(path.Join(config.HtmlPrefix, "auths/get_info"), config.Auth.GetInfo).Methods("GET")
 	r.HandleFunc(path.Join(config.HtmlPrefix, "js/{file:.*}"), m.serveJSFile)
 	r.HandleFunc(path.Join(config.HtmlPrefix, "css/{file:.*}"), m.serveCSSFile)
 	r.HandleFunc(path.Join(config.HtmlPrefix, "img/{file:.*}"), m.serveIMGFile)
