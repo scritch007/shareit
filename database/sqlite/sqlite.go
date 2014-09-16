@@ -47,9 +47,11 @@ type Share struct {
 	Path *string `sql:"type:varchar;"` // Can be empty only if ShareLinkKey is provided
 	Key  *string `sql:"type:varchar;"` // Can be empty only for a creation or on a Get
 	// UserList *[]string             `sql:"type:varchar;"` // This is only available for EnumRestricted mode
-	Type   api.EnumShareLinkType `sql:"type:integer;"`
-	Access api.AccessType        `sql:"type:integer;"` // What access would people coming with this link have
-	Id     string                `sql:"type:varchar;"`
+	Type        api.EnumShareLinkType `sql:"type:integer;"`
+	Access      api.AccessType        `sql:"type:integer;"` // What access would people coming with this link have
+	Id          string                `sql:"type:varchar;"`
+	Password    *string               `sql:"type:varchar;"`
+	NbDownloads *int                  `sql:"type:integer;"` // Number of downloads for a file. This is only valid for file shared, not directories
 }
 
 type AllowedUserShare struct {
@@ -459,7 +461,8 @@ func (d *SqliteDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	share := Share{Name: shareLink.ShareLink.Name, Path: shareLink.ShareLink.Path,
 		Key: shareLink.ShareLink.Key, User: shareLink.User,
 		Id: strconv.Itoa(idx + 1), Type: shareLink.ShareLink.Type,
-		Access: access}
+		Access: access, Password: shareLink.ShareLink.Password,
+		NbDownloads: shareLink.ShareLink.NbDownloads}
 	err = d.db.Table("shares").Create(&share).Error
 	if err != nil {
 		return errors.New("Register SaveShareLink error")
@@ -506,12 +509,14 @@ func (d *SqliteDatabase) GetShareLink(key string) (shareLink *types.ShareLink, e
 	}
 
 	link := api.ShareLink{
-		Name:     share.Name,
-		Path:     share.Path,
-		Key:      share.Key,
-		UserList: &allowed_user,
-		Type:     share.Type,
-		Access:   &share.Access,
+		Name:        share.Name,
+		Path:        share.Path,
+		Key:         share.Key,
+		UserList:    &allowed_user,
+		Type:        share.Type,
+		Access:      &share.Access,
+		NbDownloads: share.NbDownloads,
+		Password:    share.Password,
 	}
 	sharelink := types.ShareLink{
 		User:      share.User,
@@ -564,12 +569,14 @@ func (d *SqliteDatabase) listShareLinks(user string) (shareLinks []*types.ShareL
 			}
 		}
 		link := api.ShareLink{
-			Name:     result.Name,
-			Path:     result.Path,
-			Key:      result.Key,
-			UserList: &allowed_user,
-			Type:     result.Type,
-			Access:   &result.Access,
+			Name:        result.Name,
+			Path:        result.Path,
+			Key:         result.Key,
+			UserList:    &allowed_user,
+			Type:        result.Type,
+			Access:      &result.Access,
+			NbDownloads: result.NbDownloads,
+			Password:    result.Password,
 		}
 		sharelink := types.ShareLink{
 			User:      result.User,
