@@ -480,6 +480,68 @@ func (d *SqliteDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	return nil
 }
 
+func (d *SqliteDatabase) UpdateShareLink(shareLink *types.ShareLink) (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	var share Share
+	err = d.db.Table("shares").Where("path = ?", *shareLink.ShareLink.Path).First(&share).Error
+	if err != nil {
+		message := fmt.Sprintf("Couldn't find share link:%s", *shareLink.ShareLink.Path)
+		d.Log(ERROR, message)
+		return errors.New(message)
+	}
+	previous_type := share.Type
+	share.Name = shareLink.ShareLink.Name
+	share.Key = shareLink.ShareLink.Key
+	share.Type = shareLink.ShareLink.Type
+	share.Access = *shareLink.ShareLink.Access
+	share.Password = shareLink.ShareLink.Password
+	share.NbDownloads = shareLink.ShareLink.NbDownloads
+	err = d.db.Table("shares").Save(&share).Error
+	if err != nil {
+		return errors.New("Update SaveShareLink error")
+	}
+
+	if previous_type == api.EnumRestricted && share.Type != api.EnumRestricted {
+		// delete user share list
+		err = d.db.Table("allowed_user_shares").Where("share_id = ?", share.Id).Delete(AllowedUserShare{}).Error
+		if err != nil {
+			return errors.New("Update SaveShareLink error")
+		}
+	}
+	if previous_type != api.EnumRestricted && share.Type == api.EnumRestricted {
+		//add user share list
+		if shareLink.ShareLink.UserList != nil {
+			for _, value := range *shareLink.ShareLink.UserList {
+				user := AllowedUserShare{User: value, ShareId: share.Id, Key: shareLink.ShareLink.Key}
+				err = d.db.Table("allowed_user_shares").Create(&user).Error
+				if err != nil {
+					return errors.New("Register SaveShareLink error")
+				}
+			}
+		}
+	}
+	if previous_type == api.EnumRestricted && share.Type == api.EnumRestricted {
+		//update user share list
+		err = d.db.Table("allowed_user_shares").Where("share_id = ?", share.Id).Delete(AllowedUserShare{}).Error
+		if err != nil {
+			return errors.New("Update SaveShareLink error")
+		}
+		if shareLink.ShareLink.UserList != nil {
+			for _, value := range *shareLink.ShareLink.UserList {
+				user := AllowedUserShare{User: value, ShareId: share.Id, Key: shareLink.ShareLink.Key}
+				err = d.db.Table("allowed_user_shares").Create(&user).Error
+				if err != nil {
+					return errors.New("Update SaveShareLink error")
+				}
+			}
+
+		}
+	}
+
+	return nil
+}
+
 func (d *SqliteDatabase) GetShareLink(key string) (shareLink *types.ShareLink, err error) {
 	d.lock.RLock()
 	defer d.lock.RUnlock()

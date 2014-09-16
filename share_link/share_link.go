@@ -86,6 +86,78 @@ func (s *ShareLinkHandler) create(context *types.CommandContext, resp chan<- typ
 	resp <- types.EnumCommandHandlerDone
 }
 
+func (s *ShareLinkHandler) update(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
+	command := context.Command.ApiCommand
+	if nil == command.ShareLink.Update {
+		tools.LOG_DEBUG.Println("Missing input configuration")
+		command.State.ErrorCode = api.ERROR_MISSING_COMMAND_BODY
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+	//TODO check that the path is provided and that it is a valid path.
+	if nil == command.ShareLink.Update.Input.ShareLink.Path {
+		tools.LOG_DEBUG.Println("Missing path parameter")
+		command.State.ErrorCode = api.ERROR_MISSING_PARAMETERS
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+	item_path := path.Join(s.config.RootPrefix, *command.ShareLink.Update.Input.ShareLink.Path)
+	tools.LOG_DEBUG.Println("Updating sharelink for " + item_path)
+
+	_, err := os.Lstat(item_path)
+	if nil != err {
+		tools.LOG_ERROR.Println("Couldn't access to path ", item_path)
+		command.State.ErrorCode = api.ERROR_INVALID_PATH
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+	//Remove this part allow sharing a single file
+	//if !fileInfo.IsDir() {
+	//	tools.LOG_ERROR.Println(item_path, " is not a directory...")
+	//	command.State.ErrorCode = &api.ERROR_INVALID_PATH
+	//	resp <- types.EnumCommandHandlerError
+	//	return
+	//}
+	key, err := randutil.AlphaString(20)
+	command.ShareLink.Update.Input.ShareLink.Key = &key
+
+	//*command.ShareLink.Update.Input.ShareLink.Path = path.Clean(*command.ShareLink.Update.Input.ShareLink.Path)
+	var sLink types.ShareLink
+	sLink.ShareLink = command.ShareLink.Update.Input.ShareLink
+	*sLink.ShareLink.Path = path.Clean(*command.ShareLink.Update.Input.ShareLink.Path)
+
+	sLink.User = context.Account.Id
+	if nil == command.ShareLink.Update.Input.ShareLink.Name {
+		sLink.ShareLink.Name = new(string)
+		*sLink.ShareLink.Name = "share_link"
+	}
+
+	//sLink.Key = *command.ShareLink.Update.Input.ShareLink.Key
+	//sLink.User = command.ShareLink.Update.Input.ShareLink.User
+	//TODO check that the access is correct and is not more then the user actually has access to
+
+	//sLink.Users = command.ShareLink.Update.Input.ShareLink.Users
+	//TODO!!!!!!
+	err = s.config.Db.UpdateShareLink(&sLink)
+	command.ShareLink.Update.Output.ShareLink = sLink.ShareLink
+	if nil != err {
+		tools.LOG_ERROR.Println("Failed to save the Sharelink")
+		command.State.ErrorCode = api.ERROR_SAVING
+		resp <- types.EnumCommandHandlerError
+		return
+	}
+	resp <- types.EnumCommandHandlerDone
+}
+
+func (s *ShareLinkHandler) delete(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
+	command := context.Command.ApiCommand
+	err := s.config.Db.RemoveShareLink(command.ShareLink.Delete.Input.Key)
+	if nil != err {
+		resp <- types.EnumCommandHandlerError
+	}
+	resp <- types.EnumCommandHandlerDone
+}
+
 func (s *ShareLinkHandler) get(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) {
 	command := context.Command.ApiCommand
 	shareLinks, err := s.config.Db.GetShareLinksFromPath(command.ShareLink.List.Input.Path, *context.Command.User)
@@ -110,9 +182,9 @@ func (s *ShareLinkHandler) Handle(context *types.CommandContext, resp chan<- typ
 	if command.ApiCommand.Name == api.EnumShareLinkCreate {
 		go s.create(context, resp)
 	} else if command.ApiCommand.Name == api.EnumShareLinkUpdate {
-
+		go s.update(context, resp)
 	} else if command.ApiCommand.Name == api.EnumShareLinkDelete {
-
+		go s.delete(context, resp)
 	} else if command.ApiCommand.Name == api.EnumShareLinkList {
 		go s.get(context, resp)
 	} else {

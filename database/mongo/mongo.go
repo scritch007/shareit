@@ -356,6 +356,17 @@ func (d *MongoDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	return nil
 }
 
+func (d *MongoDatabase) UpdateShareLink(shareLink *types.ShareLink) (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	c := d.session.DB("mongo").C("shares_link")
+	err = c.Update(bson.M{"path": *shareLink.ShareLink.Path}, shareLink)
+	if err != nil {
+		return errors.New("Update SaveShareLink error")
+	}
+	return nil
+}
+
 func (d *MongoDatabase) GetShareLink(key string) (shareLink *types.ShareLink, err error) {
 	d.lock.RLock()
 	defer d.lock.RUnlock()

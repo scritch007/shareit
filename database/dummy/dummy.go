@@ -380,6 +380,16 @@ func (d *DummyDatabase) SaveShareLink(shareLink *types.ShareLink) (err error) {
 	d.shareLinkMap[*shareLink.ShareLink.Key] = shareLink
 	return d.saveDb()
 }
+
+func (d *DummyDatabase) UpdateShareLink(shareLink *types.ShareLink) (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	//TODO check if there is already a sharelink with this name and user
+	shareLink.Id = *shareLink.ShareLink.Key
+	d.shareLinkMap[*shareLink.ShareLink.Key] = shareLink
+	return d.saveDb()
+}
+
 func (d *DummyDatabase) GetShareLink(key string) (shareLink *types.ShareLink, err error) {
 	d.lock.RLock()
 	defer d.lock.RUnlock()

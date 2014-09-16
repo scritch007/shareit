@@ -33,6 +33,7 @@ type DatabaseInterface interface {
 
 	//ShareLink
 	SaveShareLink(shareLink *ShareLink) (err error)
+	UpdateShareLink(shareLink *ShareLink) (err error)
 	GetShareLink(key string) (shareLink *ShareLink, err error)
 	ListShareLinks(user string) (shareLinks []*ShareLink, err error) //List the sharelink user created
 	GetShareLinksFromPath(path string, user string) (shareLinks []*ShareLink, err error)
