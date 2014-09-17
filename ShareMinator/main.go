@@ -12,7 +12,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
+	"runtime/pprof"
 )
 
 func (m *Main) serveJSFile(w http.ResponseWriter, r *http.Request) {
@@ -98,6 +100,7 @@ func main() {
 	flag.StringVar(&configFile, "c", "", "Configuration file to use")
 	flag.BoolVar(&help, "help", false, "Display Help")
 	flag.BoolVar(&help, "h", false, "Display Help")
+	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
@@ -137,10 +140,31 @@ func main() {
 	r.HandleFunc(path.Join(config.HtmlPrefix, "bower_components/{file:.*}"), m.serveBowerFiles)
 	r.HandleFunc(path.Join(config.HtmlPrefix, "{file}.html"), m.serveHTMLFile)
 
+	s := &http.Server{Addr: ":" + m.port, Handler: nil}
 	http.Handle(config.HtmlPrefix, r)
 
 	tools.LOG_INFO.Println("Starting server on port " + m.port)
-	http.ListenAndServe(":"+m.port, nil)
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			tools.LOG_ERROR.Println("Failed to create profiling file with error " + err.Error())
+			os.Exit(-1)
+		}
+		pprof.StartCPUProfile(f)
+	}
+
+	go func() {
+		<-sig
+		tools.LOG_INFO.Println("Got a shutdown command. Going down...")
+		if *cpuprofile != "" {
+			pprof.StopCPUProfile()
+		}
+		os.Exit(0)
+	}()
+	s.ListenAndServe()
 }
 
 type Main struct {
