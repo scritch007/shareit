@@ -17,6 +17,7 @@ import (
 	"github.com/scritch007/shareit/share_link"
 	"github.com/scritch007/shareit/types"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -111,7 +112,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 		backendCommand.User = nil
 	}
 
-	channel := make(chan types.EnumCommandHandlerStatus)
+	channel := make(chan types.EnumCommandHandlerStatus, 1)
 	command.State.Progress = 0
 	command.State.ErrorCode = 0
 	command.State.Status = api.COMMAND_STATUS_IN_PROGRESS
@@ -168,7 +169,8 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	b, _ := json.Marshal(command)
-	io.WriteString(w, string(b))
+	w.Write(b)
+	runtime.GC()
 }
 
 //This is extracted from the net/http/fs.go file
