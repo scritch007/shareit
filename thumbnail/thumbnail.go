@@ -38,10 +38,13 @@ func thumbnailToBase64(path string) (string, error) {
 	if nil != err {
 		return "", err
 	}
+
 	_, err = b.ReadFrom(file)
+	file.Close()
 	if nil != err {
 		return "", err
 	}
+
 	e64 := base64.StdEncoding
 
 	maxEncLen := e64.EncodedLen(len(b.Bytes()))
@@ -80,13 +83,13 @@ func (t *ThumbnailGenerator) resizeImage(path string, resp chan<- string) {
 		resp <- ""
 		return
 	}
-	defer file.Close()
 	img, _, err := image.Decode(file)
 	if nil != err {
 		tools.LOG_ERROR.Println("Failed to decode file " + err.Error())
 		resp <- ""
 		return
 	}
+	file.Close()
 	m := resize.Thumbnail(48, 48, img, resize.NearestNeighbor)
 	err = t.checkAndCreateThumbnailFolder(path)
 	if nil != err {
@@ -104,6 +107,7 @@ func (t *ThumbnailGenerator) resizeImage(path string, resp chan<- string) {
 	base64Value := ""
 	err = png.Encode(out, m)
 	if nil != err {
+		out.Close()
 		tools.LOG_ERROR.Println("Failed to encode file " + err.Error())
 		resp <- ""
 		return

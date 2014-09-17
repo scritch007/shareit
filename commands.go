@@ -89,6 +89,7 @@ func (c *CommandHandler) Commands(w http.ResponseWriter, r *http.Request) {
 	command := new(api.Command)
 
 	input, err := ioutil.ReadAll(r.Body)
+	r.Body.Close()
 	if nil != err {
 		errMessage := fmt.Sprintf("1 Failed with error code: %s", err)
 		tools.LOG_ERROR.Println(errMessage)
@@ -249,11 +250,7 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// make a buffer to keep chunks that are read
-		buf := make([]byte, c.UploadChunkSize)
 		total_size := r.ContentLength
-		var chunk_offset int64
-		var buf_dim int64
-		chunk_offset = int64(0)
 		h := c.getHandler(command.ApiCommand)
 		commandContext := types.CommandContext{command, user, r}
 		uploadPath, size, hErr := h.GetUploadPath(&commandContext)
@@ -309,34 +306,25 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, errMessage, http.StatusInternalServerError)
 			return
 		}
-		defer f.Close()
 		f.Seek(offset, os.SEEK_SET)
-		for {
-			rest := total_size - chunk_offset
-			if rest == 0 {
-				// EOF
-				break
-			}
-			if rest > c.UploadChunkSize {
-				buf_dim = c.UploadChunkSize
-			} else {
-				buf_dim = rest
-			}
-
-			read_size, err := io.ReadFull(r.Body, buf[:buf_dim])
-			if nil != err {
-				errMessage := fmt.Sprintf("1 Failed with error code: %s", err)
-				tools.LOG_ERROR.Println(errMessage)
-				http.Error(w, errMessage, http.StatusBadRequest)
-				return
-			}
-			// tools.LOG_DEBUG.Println("Received ", read_size, "bytes")
-
-			io.WriteString(f, string(buf[:read_size]))
-			command.ApiCommand.State.Progress = int((offset + chunk_offset + int64(read_size)) * 100 / size)
-
-			chunk_offset += int64(read_size)
+		written, err := io.Copy(f, r.Body)
+		if nil != err {
+			errMessage := fmt.Sprintf("Writing to file failed with error: %s", err)
+			tools.LOG_ERROR.Println(errMessage)
+			http.Error(w, errMessage, http.StatusBadRequest)
+			f.Close()
+			return
 		}
+		if written != total_size {
+			errMessage := fmt.Sprintf("Didn't write all to the destination: %s", err)
+			tools.LOG_ERROR.Println(errMessage)
+			http.Error(w, errMessage, http.StatusBadRequest)
+			f.Close()
+			return
+		}
+		command.ApiCommand.State.Progress = int((offset + written) * 100 / size)
+		//Close the file now because we are gonna rename it
+		f.Close()
 		if 100 == command.ApiCommand.State.Progress {
 			command.ApiCommand.State.Status = api.COMMAND_STATUS_DONE
 			//rename file

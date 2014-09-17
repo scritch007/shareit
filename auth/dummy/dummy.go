@@ -59,6 +59,7 @@ func (d *DummyAuth) AddRoutes(r *mux.Router) error {
 func (auth *DummyAuth) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	//method auth, create, validate
 	input, err := ioutil.ReadAll(r.Body)
+	r.Body.Close()
 	if nil != err {
 		tools.LOG_ERROR.Println("1 Failed with error code " + err.Error())
 		return
@@ -132,6 +133,7 @@ func (auth *DummyAuth) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	input, err := ioutil.ReadAll(r.Body)
+	r.Body.Close()
 	if nil != err {
 		tools.LOG_ERROR.Println("1 Failed with error code " + err.Error())
 		return
