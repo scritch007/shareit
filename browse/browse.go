@@ -15,6 +15,7 @@ import (
 	"path"
 	"path/filepath"
 	"time"
+	"strings"
 )
 
 type BrowseHandler struct {
@@ -70,6 +71,7 @@ func (b *BrowseHandler) downloadLink(context *types.CommandContext, resp chan<- 
 
 	file_path := accessPath.RealPath
 	result := tools.ComputeHmac256(*file_path, b.config.PrivateKey)
+	strings.Replace(result, "/", "_", -1)
 	dLink := types.DownloadLink{Link: result, Path: command.Browser.DownloadLink.Input.Path, RealPath: file_path}
 	b.config.Db.AddDownloadLink(&dLink)
 	command.Browser.DownloadLink.Output.DownloadLink = url.QueryEscape(result)
