@@ -14,8 +14,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"time"
 	"strings"
+	"time"
 )
 
 type BrowseHandler struct {
@@ -70,7 +70,7 @@ func (b *BrowseHandler) downloadLink(context *types.CommandContext, resp chan<- 
 	}
 
 	file_path := accessPath.RealPath
-	result := tools.ComputeHmac256(*file_path, b.config.PrivateKey)
+	result := tools.ComputeHmac256Html(*file_path, b.config.PrivateKey)
 	strings.Replace(result, "/", "_", -1)
 	dLink := types.DownloadLink{Link: result, Path: command.Browser.DownloadLink.Input.Path, RealPath: file_path}
 	b.config.Db.AddDownloadLink(&dLink)
@@ -132,6 +132,7 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 			tools.LOG_DEBUG.Println("Trying to remove " + element_path)
 			err = os.RemoveAll(element_path)
 			if nil != err {
+				tools.LOG_ERROR.Println("Failed to remove entry " + err.Error())
 				success = types.EnumCommandHandlerError
 				command.State.ErrorCode = api.ERROR_FILE_SYSTEM
 			}
