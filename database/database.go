@@ -20,7 +20,7 @@ func NewDatabase(name string, config *json.RawMessage, debug bool) (types.Databa
 	case mongo.Name:
 		newDatabase, err = mongo.NewMongoDatase(config)
 	/*case sqlite.Name:
-		newDatabase, err = sqlite.NewSqliteDatase(config, debug)*/
+	newDatabase, err = sqlite.NewSqliteDatase(config, debug)*/
 	default:
 		err = errors.New("Unknown authentication method " + name)
 		newDatabase = nil
