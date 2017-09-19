@@ -2,11 +2,6 @@ package browse
 
 import (
 	"errors"
-	"github.com/scritch007/ShareMinatorApiGenerator/api"
-	"github.com/scritch007/go-tools"
-	"github.com/scritch007/shareit/auth"
-	"github.com/scritch007/shareit/thumbnail"
-	"github.com/scritch007/shareit/types"
 	"io/ioutil"
 	"mime"
 	"net/http"
@@ -15,18 +10,27 @@ import (
 	"path"
 	"path/filepath"
 	"time"
+
+	"github.com/scritch007/ShareMinatorApiGenerator/api"
+	"github.com/scritch007/go-tools"
+	"github.com/scritch007/shareit/auth"
+	"github.com/scritch007/shareit/thumbnail"
+	"github.com/scritch007/shareit/types"
 )
 
+//BrowseHandler export browse structure
 type BrowseHandler struct {
 	config    *types.Configuration
 	thumbnail *thumbnail.ThumbnailGenerator
 }
 
+//NewBrowseHandler instantiate handler
 func NewBrowseHandler(config *types.Configuration) (handler *BrowseHandler) {
 	handler = &BrowseHandler{config: config, thumbnail: thumbnail.NewThumbnailGenerator(config)}
 	return handler
 }
 
+//Handle main method to handle commands
 func (b *BrowseHandler) Handle(context *types.CommandContext, resp chan<- types.EnumCommandHandlerStatus) *types.HttpError {
 	command := context.Command
 	tools.LOG_DEBUG.Println("Got this command ", command.ApiCommand.Name)
@@ -68,9 +72,9 @@ func (b *BrowseHandler) downloadLink(context *types.CommandContext, resp chan<- 
 		return
 	}
 
-	file_path := accessPath.RealPath
-	result := tools.ComputeHmac256Html(*file_path, b.config.PrivateKey)
-	dLink := types.DownloadLink{Link: result, Path: command.Browser.DownloadLink.Input.Path, RealPath: file_path}
+	filePath := accessPath.RealPath
+	result := tools.ComputeHmac256Html(*filePath, b.config.PrivateKey)
+	dLink := types.DownloadLink{Link: result, Path: command.Browser.DownloadLink.Input.Path, RealPath: filePath}
 	b.config.Db.AddDownloadLink(&dLink)
 	command.Browser.DownloadLink.Output.DownloadLink = url.QueryEscape(result)
 	resp <- types.EnumCommandHandlerDone
@@ -101,8 +105,8 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 		return
 	}
 
-	item_path := accessPath.RealPath
-	if nil == item_path {
+	itemPath := accessPath.RealPath
+	if nil == itemPath {
 		command.State.ErrorCode = api.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
@@ -116,7 +120,7 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 	if accessPath.IsDir {
 		tools.LOG_DEBUG.Println("Item is a directory")
 		//We are going to make something nice with a progress
-		fileList, err := ioutil.ReadDir(*item_path)
+		fileList, err := ioutil.ReadDir(*itemPath)
 		if nil != err {
 			tools.LOG_DEBUG.Println("Couldn't list directory")
 			command.State.ErrorCode = api.ERROR_FILE_SYSTEM
@@ -126,9 +130,9 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 		nbElements := len(fileList)
 		success := types.EnumCommandHandlerDone
 		for i, element := range fileList {
-			element_path := path.Join(*item_path, element.Name())
-			tools.LOG_DEBUG.Println("Trying to remove " + element_path)
-			err = os.RemoveAll(element_path)
+			elementPath := path.Join(*itemPath, element.Name())
+			tools.LOG_DEBUG.Println("Trying to remove " + elementPath)
+			err = os.RemoveAll(elementPath)
 			if nil != err {
 				tools.LOG_ERROR.Println("Failed to remove entry " + err.Error())
 				success = types.EnumCommandHandlerError
@@ -136,12 +140,12 @@ func (b *BrowseHandler) deleteItemCommand(context *types.CommandContext, resp ch
 			}
 			command.State.Progress = i * 100 / nbElements
 		}
-		if nil != os.RemoveAll(*item_path) {
+		if nil != os.RemoveAll(*itemPath) {
 			success = types.EnumCommandHandlerError
 		}
 		resp <- success
 	} else {
-		err := os.Remove(*item_path)
+		err := os.Remove(*itemPath)
 		if nil == err {
 			resp <- types.EnumCommandHandlerDone
 		} else {
@@ -175,8 +179,8 @@ func (b *BrowseHandler) createFolderCommand(context *types.CommandContext, resp 
 		return
 	}
 
-	item_path := accessPath.RealPath
-	if nil == item_path {
+	itemPath := accessPath.RealPath
+	if nil == itemPath {
 		command.State.ErrorCode = api.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
@@ -188,7 +192,7 @@ func (b *BrowseHandler) createFolderCommand(context *types.CommandContext, resp 
 		return
 	}
 
-	error := os.Mkdir(*item_path, os.ModePerm)
+	error := os.Mkdir(*itemPath, os.ModePerm)
 	if nil != error {
 		resp <- types.EnumCommandHandlerError
 	} else {
@@ -215,8 +219,8 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 		return
 	}
 
-	item_path := accessPath.RealPath
-	if nil == item_path {
+	itemPath := accessPath.RealPath
+	if nil == itemPath {
 		command.State.ErrorCode = api.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
@@ -231,7 +235,7 @@ func (b *BrowseHandler) uploadFile(context *types.CommandContext, resp chan<- ty
 
 	if accessPath.Exists {
 		tools.LOG_DEBUG.Println("Truncating file")
-		os.Truncate(*item_path, command.Browser.UploadFile.Input.Size)
+		os.Truncate(*itemPath, command.Browser.UploadFile.Input.Size)
 		return
 	}
 	resp <- types.EnumCommandHandlerPostponed
@@ -256,8 +260,8 @@ func (b *BrowseHandler) thumbnailCommand(context *types.CommandContext, resp cha
 		return
 	}
 
-	item_path := accessPath.RealPath
-	if nil == item_path {
+	itemPath := accessPath.RealPath
+	if nil == itemPath {
 		command.State.ErrorCode = api.ERROR_INVALID_PATH
 		resp <- types.EnumCommandHandlerError
 		return
@@ -364,6 +368,7 @@ func (b *BrowseHandler) browseCommand(context *types.CommandContext, resp chan<-
 	resp <- types.EnumCommandHandlerDone
 }
 
+//GetUploadPath return uploadPath
 func (b *BrowseHandler) GetUploadPath(context *types.CommandContext) (path *string, size int64, hErr *types.HttpError) {
 	command := context.Command.ApiCommand
 	if api.EnumBrowserUploadFile != command.Name {
