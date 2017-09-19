@@ -3,24 +3,26 @@ package shareit
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+
+	"github.com/gorilla/mux"
 	//	"strconv"
 	"archive/zip"
 	"errors"
-	"github.com/scritch007/ShareMinatorApiGenerator/api"
-	"github.com/scritch007/go-tools"
-	"github.com/scritch007/shareit/browse"
-	"github.com/scritch007/shareit/share_link"
-	"github.com/scritch007/shareit/types"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/scritch007/ShareMinatorApiGenerator/api"
+	"github.com/scritch007/go-tools"
+	"github.com/scritch007/shareit/browse"
+	"github.com/scritch007/shareit/share_link"
+	"github.com/scritch007/shareit/types"
 )
 
 //ServeContent(w ResponseWriter, req *Request, name string, modtime time.Time, content io.ReadSeeker)
@@ -341,6 +343,7 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//Download serve file
 func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	file := vars["file"]
@@ -357,7 +360,7 @@ func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
 		if fileInfo.IsDir() {
 			zipFileName := fileInfo.Name() + ".zip"
 			w.Header().Set("Content-Type", "application/zip")
-			w.Header().Set("Content-Disposition", `attachment; filename="`+zipFileName+`"`)
+			w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q"`, zipFileName))
 			zw := zip.NewWriter(w)
 			defer zw.Close()
 			// Walk directory.
@@ -384,7 +387,7 @@ func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
 			})
 
 		} else {
-			w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(*link.RealPath))
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filepath.Base(*link.RealPath)))
 			http.ServeFile(w, r, *link.RealPath)
 		}
 
