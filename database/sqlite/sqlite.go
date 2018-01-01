@@ -61,7 +61,7 @@ type AllowedUserShare struct {
 
 type SqliteDatabase struct {
 	Database     string `json:"database"`
-	db           gorm.DB
+	db           *gorm.DB
 	lock         sync.RWMutex
 	commandsList []*types.Command
 	commandIndex int
