@@ -4,10 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/scritch007/go-tools"
-	"github.com/scritch007/shareit"
-	"github.com/scritch007/shareit/types"
 	"html/template"
 	"io"
 	"net/http"
@@ -15,6 +11,12 @@ import (
 	"os/signal"
 	"path"
 	"runtime/pprof"
+
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"github.com/scritch007/go-tools"
+	"github.com/scritch007/shareit"
+	"github.com/scritch007/shareit/types"
 )
 
 func (m *Main) serveJSFile(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +40,7 @@ func (m *Main) serveBowerFiles(w http.ResponseWriter, r *http.Request) {
 func (m *Main) serveFile(w http.ResponseWriter, r *http.Request, folder string) {
 	vars := mux.Vars(r)
 	file := vars["file"]
-	tools.LOG_DEBUG.Println("Serving file %s", file)
+	tools.LOG_DEBUG.Printf("Serving file %s\n", file)
 	http.ServeFile(w, r, path.Join(m.path, folder, file))
 }
 
@@ -140,8 +142,11 @@ func main() {
 	r.HandleFunc(path.Join(config.HtmlPrefix, "bower_components/{file:.*}"), m.serveBowerFiles)
 	r.HandleFunc(path.Join(config.HtmlPrefix, "{file}.html"), m.serveHTMLFile)
 
-	s := &http.Server{Addr: ":" + m.port, Handler: nil}
-	http.Handle(config.HtmlPrefix, r)
+	corsObj := handlers.AllowedOrigins([]string{"*"})
+	methodObjs := handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodOptions})
+	headersObjs := handlers.AllowedHeaders([]string{"Content-Type", "Accept", "Accept-Language", "Content-Language", "Origin"})
+
+	s := &http.Server{Addr: ":" + m.port, Handler: handlers.CORS(corsObj, methodObjs, headersObjs)(r)}
 
 	tools.LOG_INFO.Println("Starting server on port " + m.port)
 	sig := make(chan os.Signal, 1)
@@ -164,6 +169,7 @@ func main() {
 		}
 		os.Exit(0)
 	}()
+
 	s.ListenAndServe()
 }
 
