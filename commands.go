@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 
 	"github.com/gorilla/mux"
+	"github.com/labstack/echo/v4"
+
 	//	"strconv"
 	"archive/zip"
 	"errors"
@@ -344,9 +346,8 @@ func (c *CommandHandler) Command(w http.ResponseWriter, r *http.Request) {
 }
 
 //Download serve file
-func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	file := vars["file"]
+func (c *CommandHandler) Download(ctx echo.Context) error {
+	file := ctx.Param("file")
 
 	link, err := c.config.Db.GetDownloadLink(file)
 	//Get the realpath depending on the configuration and the sharelink or direct download
@@ -354,17 +355,18 @@ func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
 		tools.LOG_DEBUG.Println("Serving file ", *link.RealPath)
 		fileInfo, err := os.Lstat(*link.RealPath)
 		if nil != err {
-			http.Error(w, "Download link doesn't point to a valid path", http.StatusNotFound)
-			return
+			ctx.String(http.StatusNotFound, "Download link doesn't point to a valid path")
+			return nil
 		}
 		if fileInfo.IsDir() {
+			w := ctx.Response()
 			zipFileName := fileInfo.Name() + ".zip"
 			w.Header().Set("Content-Type", "application/zip")
 			w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q"`, zipFileName))
 			zw := zip.NewWriter(w)
 			defer zw.Close()
 			// Walk directory.
-			filepath.Walk(*link.RealPath, func(path string, info os.FileInfo, err error) error {
+			filepath.Walk(*link.RealPath, func(path string, info os.FileInfo, walkErr error) error {
 				if info.IsDir() {
 					return nil
 				}
@@ -387,11 +389,12 @@ func (c *CommandHandler) Download(w http.ResponseWriter, r *http.Request) {
 			})
 
 		} else {
-			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filepath.Base(*link.RealPath)))
-			http.ServeFile(w, r, *link.RealPath)
+			//w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filepath.Base(*link.RealPath)))
+			ctx.File(*link.RealPath)
 		}
 
 	} else {
-		http.Error(w, "Download link is unavailable. Try renewing link", http.StatusNotFound)
+		ctx.String(http.StatusNotFound, "Download link is unavailable. Try renewing link")
 	}
+	return nil
 }

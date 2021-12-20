@@ -3,14 +3,15 @@ package auth
 import (
 	"encoding/json"
 	"errors"
-	"github.com/gorilla/mux"
+	"os"
+	"path"
+	"path/filepath"
+
+	"github.com/labstack/echo/v4"
 	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"github.com/scritch007/go-tools"
 	"github.com/scritch007/shareit/auth/dummy"
 	"github.com/scritch007/shareit/types"
-	"os"
-	"path"
-	"path/filepath"
 )
 
 type configSubStruct struct {
@@ -19,7 +20,7 @@ type configSubStruct struct {
 }
 
 //Should be called by authentication mechanism
-func NewAuthentication(config *json.RawMessage, r *mux.Router, globalConfig *types.Configuration) (newAuth *types.Authentication, err error) {
+func NewAuthentication(config *json.RawMessage, r *echo.Echo, globalConfig *types.Configuration) (newAuth *types.Authentication, err error) {
 	var authConfigs []configSubStruct
 	err = json.Unmarshal(*config, &authConfigs)
 	newAuth = new(types.Authentication)
@@ -119,16 +120,21 @@ func GetAccessAndPath(config *types.Configuration, context *types.CommandContext
 		} else {
 			if !isRoot {
 				//Check if user has access to this path
-				var err error
-				access, err = config.Db.GetAccess(context.Command.User, inPath)
-				if nil != err {
-					tools.LOG_ERROR.Println("Couldn't get access " + err.Error())
-					accessPath.Error = api.ERROR_INVALID_PATH
-					return accessPath, err
-				}
-				if api.NONE == access {
-					accessPath.Error = api.ERROR_NOT_ALLOWED
-					return accessPath, nil
+				if !config.Public {
+					var err error
+					access, err = config.Db.GetAccess(context.Command.User, inPath)
+					if nil != err {
+						tools.LOG_ERROR.Println("Couldn't get access " + err.Error())
+						accessPath.Error = api.ERROR_INVALID_PATH
+						return accessPath, err
+					}
+					if api.NONE == access {
+						tools.LOG_DEBUG.Printf("Access disabled for %s", inPath)
+						accessPath.Error = api.ERROR_NOT_ALLOWED
+						return accessPath, nil
+					}
+				} else {
+					access = api.READ
 				}
 			} else {
 				if config.AllowRootWrite {

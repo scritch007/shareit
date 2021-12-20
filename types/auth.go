@@ -2,15 +2,16 @@ package types
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
-	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"io"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
+	"github.com/scritch007/ShareMinatorApiGenerator/api"
 )
 
 type SubAuthentication interface {
 	Name() string
-	AddRoutes(r *mux.Router) error
+	AddRoutes(r *echo.Echo) error
 }
 
 type Authentication struct {
@@ -80,11 +81,11 @@ func (auth *Authentication) ListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	search := r.URL.Query().Get("search")
 	searchParameters := make(map[string]string)
-	if 0 != len(search) {
+	if len(search) != 0 {
 		searchParameters["login"] = search
 		searchParameters["id"] = search
 	}
-	accounts, err := auth.Config.Db.ListAccounts(searchParameters)
+	accounts, _ := auth.Config.Db.ListAccounts(searchParameters)
 	resp := make([]api.Account, len(accounts))
 	for i, account := range accounts {
 		AccountBackend2Api(account, &resp[i])

@@ -4,16 +4,17 @@ package shareit
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
+	"io/ioutil"
+	"os"
+	"path"
+	"path/filepath"
+
+	"github.com/labstack/echo/v4"
 	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"github.com/scritch007/shareit/auth"
 	"github.com/scritch007/shareit/auth/dummy"
 	"github.com/scritch007/shareit/database"
 	"github.com/scritch007/shareit/types"
-	"io/ioutil"
-	"os"
-	"path"
-	"path/filepath"
 )
 
 type configSubStruct struct {
@@ -51,9 +52,10 @@ type readConfiguration struct {
 	AllowChangingAccesses bool             `json:"allow_changing_accesses"`
 	UploadChunkSize       int64            `json:"upload_chunk_size"`
 	Debug                 bool             `json:"debug"`
+	Public                bool             `json:"public"`
 }
 
-func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Configuration) {
+func NewConfiguration(configFile string, r *echo.Echo) (resultConfig *types.Configuration) {
 	file, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		fmt.Printf("File error: %v\n", err)
@@ -66,34 +68,34 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 		os.Exit(1)
 	}
 	//Check the configuration
-	if 0 == len(c.WebPort) {
+	if len(c.WebPort) == 0 {
 		fmt.Println("Error: web_port should be set to a correct value")
 		os.Exit(2)
 	}
 	staticPath, err := filepath.Abs(c.StaticPath)
 	if err != nil {
-		fmt.Println("Couldn't get Absolute path for %s", c.StaticPath)
+		fmt.Printf("Couldn't get Absolute path for %s\n", c.StaticPath)
 		os.Exit(2)
 	}
 
 	if _, err := os.Stat(staticPath); err != nil {
 		if os.IsNotExist(err) {
-			fmt.Println("Error: the path %s, doesn't exist", staticPath)
+			fmt.Printf("Error: the path %s, doesn't exist", staticPath)
 		} else {
-			fmt.Println("Error: Something went wrong when accessing to %s, %v", staticPath, err)
+			fmt.Printf("Error: Something went wrong when accessing to %s, %v", staticPath, err)
 		}
 		os.Exit(2)
 	}
 	rootPrefix, err := filepath.Abs(c.RootPrefix)
 	if err != nil {
-		fmt.Println("Couldn't get Absolute path for %s", c.StaticPath)
+		fmt.Printf("Couldn't get Absolute path for %s", c.StaticPath)
 		os.Exit(2)
 	}
 	if _, err := os.Stat(rootPrefix); err != nil {
 		if os.IsNotExist(err) {
-			fmt.Println("Error: the path %s, doesn't exist", rootPrefix)
+			fmt.Printf("Error: the path %s, doesn't exist", rootPrefix)
 		} else {
-			fmt.Println("Error: Something went wrong when accessing to %s, %v", rootPrefix, err)
+			fmt.Printf("Error: Something went wrong when accessing to %s, %v", rootPrefix, err)
 		}
 		os.Exit(2)
 	}
@@ -106,7 +108,7 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 	resultConfig.Debug = c.Debug
 
 	temp := path.Join(c.HtmlPrefix, "/")
-	if "/" != string(temp[len(temp)-1]) {
+	if string(temp[len(temp)-1]) != "/" {
 		temp += "/"
 	}
 
@@ -178,5 +180,6 @@ func NewConfiguration(configFile string, r *mux.Router) (resultConfig *types.Con
 	}
 
 	resultConfig.AllowRootWrite = c.AllowRootWrite
+	resultConfig.Public = c.Public
 	return resultConfig
 }

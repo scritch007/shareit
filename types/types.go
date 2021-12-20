@@ -2,8 +2,9 @@ package types
 
 import (
 	"encoding/json"
-	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	"net/http"
+
+	"github.com/scritch007/ShareMinatorApiGenerator/api"
 	//  "fmt"
 )
 
@@ -66,6 +67,7 @@ type Configuration struct {
 	HtmlPrefix      string
 	WebPort         string
 	AllowRootWrite  bool
+	Public          bool
 	Db              DatabaseInterface
 	Auth            *Authentication
 	UploadChunkSize int64

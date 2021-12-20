@@ -13,45 +13,24 @@ import (
 	"runtime/pprof"
 
 	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
+
 	"github.com/scritch007/go-tools"
 	"github.com/scritch007/shareit"
 	"github.com/scritch007/shareit/types"
+
+	echo "github.com/labstack/echo/v4"
 )
-
-func (m *Main) serveJSFile(w http.ResponseWriter, r *http.Request) {
-	m.serveFile(w, r, "js/")
-}
-
-func (m *Main) serveCSSFile(w http.ResponseWriter, r *http.Request) {
-	m.serveFile(w, r, "css")
-}
-
-func (m *Main) serveIMGFile(w http.ResponseWriter, r *http.Request) {
-	m.serveFile(w, r, "img/")
-}
-func (m *Main) serveFontsFile(w http.ResponseWriter, r *http.Request) {
-	m.serveFile(w, r, "fonts/")
-}
-func (m *Main) serveBowerFiles(w http.ResponseWriter, r *http.Request) {
-	m.serveFile(w, r, "bower_components/")
-}
-
-func (m *Main) serveFile(w http.ResponseWriter, r *http.Request, folder string) {
-	vars := mux.Vars(r)
-	file := vars["file"]
-	tools.LOG_DEBUG.Printf("Serving file %s\n", file)
-	http.ServeFile(w, r, path.Join(m.path, folder, file))
-}
 
 type Theme struct {
 	Name string
 }
 
-func (m *Main) homeHandler(w http.ResponseWriter, r *http.Request) {
+func (m *Main) homeHandler(ctx echo.Context) error {
+	r := ctx.Request()
+
 	mode := r.URL.Query().Get("mode")
-	if "polymer" == mode {
-		http.ServeFile(w, r, path.Join(m.path, "index-polymer.html"))
+	if mode == "polymer" {
+		return ctx.File(path.Join(m.path, "index-polymer.html"))
 	} else {
 		cookie, err := r.Cookie("theme")
 		var file string
@@ -62,24 +41,19 @@ func (m *Main) homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		t, err := template.ParseFiles(path.Join(m.path, "index.html"))
 		if nil != err {
-			io.WriteString(w, "Failed to get template")
+			return fmt.Errorf("failed to get template %w", err)
 		}
-		err = t.Execute(w, Theme{Name: file})
+		err = t.Execute(ctx.Response(), Theme{Name: file})
 		if nil != err {
-			io.WriteString(w, "Failed to write template "+err.Error())
+			return fmt.Errorf("failed to write template %w", err)
 		}
 	}
+	return nil
 }
 
 func (m *Main) authsHandler(w http.ResponseWriter, r *http.Request) {
 	b, _ := json.Marshal(m.config.Auth.GetAvailableAuthentications())
 	io.WriteString(w, string(b))
-}
-
-func (m *Main) serveHTMLFile(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	file := vars["file"]
-	http.ServeFile(w, r, path.Join(m.path, "html", file+".html"))
 }
 
 type ShareMinatorConfig struct {
@@ -94,7 +68,6 @@ func (m *Main) configHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	tools.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
-	r := mux.NewRouter()
 
 	var help = false
 	var configFile = ""
@@ -110,7 +83,7 @@ func main() {
 	}
 	flag.Parse()
 
-	if 0 == len(configFile) {
+	if len(configFile) == 0 {
 		flag.Usage()
 		os.Exit(0)
 	}
@@ -120,33 +93,54 @@ func main() {
 		os.Exit(0)
 	}
 
-	config := shareit.NewConfiguration(configFile, r)
+	e := echo.New()
+	e.Debug = true
+
+	config := shareit.NewConfiguration(configFile, e)
 
 	m := NewMain(config)
 
 	c := shareit.NewCommandHandler(config)
 
-	r.HandleFunc(config.HtmlPrefix, m.homeHandler)
-	r.HandleFunc(path.Join(config.HtmlPrefix, "config"), m.configHandler)
-	r.HandleFunc(path.Join(config.HtmlPrefix, "commands"), c.Commands).Methods("GET", "POST")
-	r.HandleFunc(path.Join(config.HtmlPrefix, "commands/{command_id}"), c.Command).Methods("GET", "PUT", "DELETE", "POST")
-	r.HandleFunc(path.Join(config.HtmlPrefix, "downloads/{file:.*}"), c.Download).Methods("GET")
-	r.HandleFunc(path.Join(config.HtmlPrefix, "auths"), m.authsHandler).Methods("GET")
-	r.HandleFunc(path.Join(config.HtmlPrefix, "auths/logout"), config.Auth.LogOut).Methods("GET")
-	r.HandleFunc(path.Join(config.HtmlPrefix, "auths/list_users"), config.Auth.ListUsers).Methods("GET")
-	r.HandleFunc(path.Join(config.HtmlPrefix, "auths/get_info"), config.Auth.GetInfo).Methods("GET")
-	r.HandleFunc(path.Join(config.HtmlPrefix, "js/{file:.*}"), m.serveJSFile)
-	r.HandleFunc(path.Join(config.HtmlPrefix, "css/{file:.*}"), m.serveCSSFile)
-	r.HandleFunc(path.Join(config.HtmlPrefix, "img/{file:.*}"), m.serveIMGFile)
-	r.HandleFunc(path.Join(config.HtmlPrefix, "fonts/{file:.*}"), m.serveFontsFile)
-	r.HandleFunc(path.Join(config.HtmlPrefix, "bower_components/{file:.*}"), m.serveBowerFiles)
-	r.HandleFunc(path.Join(config.HtmlPrefix, "{file}.html"), m.serveHTMLFile)
+	e.Any(path.Join(config.HtmlPrefix, "config"), func(ctx echo.Context) error {
+		m.configHandler(ctx.Response(), ctx.Request())
+		return nil
+	})
+
+	e.Any(path.Join(config.HtmlPrefix, "commands"), func(ctx echo.Context) error {
+		c.Commands(ctx.Response(), ctx.Request())
+		return nil
+	}) //.Methods("GET", "POST")
+	e.Any(path.Join(config.HtmlPrefix, "commands/:command_id"), func(ctx echo.Context) error {
+		c.Command(ctx.Response(), ctx.Request())
+		return nil
+	}) //.Methods("GET", "PUT", "DELETE", "POST")
+	e.Any(path.Join(config.HtmlPrefix, "downloads/:file"), c.Download) //.Methods("GET")
+	e.Any(path.Join(config.HtmlPrefix, "auths"), func(ctx echo.Context) error {
+		m.authsHandler(ctx.Response(), ctx.Request())
+		return nil
+	}) //.Methods("GET")
+	e.Any(path.Join(config.HtmlPrefix, "auths/logout"), func(ctx echo.Context) error {
+		config.Auth.LogOut(ctx.Response(), ctx.Request())
+		return nil
+	}) //.Methods("GET")
+	e.Any(path.Join(config.HtmlPrefix, "auths/list_users"), func(ctx echo.Context) error {
+		config.Auth.ListUsers(ctx.Response(), ctx.Request())
+		return nil
+	}) //.Methods("GET")
+	e.Any(path.Join(config.HtmlPrefix, "auths/get_info"), func(ctx echo.Context) error {
+		config.Auth.GetInfo(ctx.Response(), ctx.Request())
+		return nil
+	}) //.Methods("GET")
+
+	e.GET(config.HtmlPrefix, m.homeHandler)
+	e.Static(config.HtmlPrefix, config.StaticPath)
 
 	corsObj := handlers.AllowedOrigins([]string{"*"})
 	methodObjs := handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodOptions})
 	headersObjs := handlers.AllowedHeaders([]string{"Content-Type", "Accept", "Accept-Language", "Content-Language", "Origin"})
 
-	s := &http.Server{Addr: ":" + m.port, Handler: handlers.CORS(corsObj, methodObjs, headersObjs)(r)}
+	s := &http.Server{Addr: ":" + m.port, Handler: handlers.CORS(corsObj, methodObjs, headersObjs)(e)}
 
 	tools.LOG_INFO.Println("Starting server on port " + m.port)
 	sig := make(chan os.Signal, 1)

@@ -3,18 +3,18 @@ package dummy
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/jmcvetta/randutil"
-	"github.com/scritch007/ShareMinatorApiGenerator/api"
-	"github.com/scritch007/go-tools"
-	"github.com/scritch007/shareit/types"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jmcvetta/randutil"
+
+	"github.com/labstack/echo/v4"
+	"github.com/scritch007/ShareMinatorApiGenerator/api"
+	"github.com/scritch007/go-tools"
+	"github.com/scritch007/shareit/types"
 )
 
 type DummyAuth struct {
@@ -33,7 +33,7 @@ type challenge struct {
 
 func NewDummyAuth(config *json.RawMessage, globalConfig *types.Configuration) (d *DummyAuth, err error) {
 	d = new(DummyAuth)
-	if err = json.Unmarshal(*config, d); nil != err {
+	if err = json.Unmarshal(*config, d); err != nil {
 		return nil, err
 	}
 	d.config = globalConfig
@@ -49,101 +49,90 @@ const (
 func (d *DummyAuth) Name() string {
 	return Name
 }
-func (d *DummyAuth) AddRoutes(r *mux.Router) error {
-	r.HandleFunc(path.Join(d.config.HtmlPrefix, api.RequestDummyAuthUrl), d.HandleAuth).Methods("POST")
-	r.HandleFunc(path.Join(d.config.HtmlPrefix, api.RequestDummyGetChallengeUrl), d.HandleGetChallenge).Methods("GET")
-	r.HandleFunc(path.Join(d.config.HtmlPrefix, api.RequestDummyCreateUrl), d.HandleCreate).Methods("POST")
+func (d *DummyAuth) AddRoutes(r *echo.Echo) error {
+	r.POST(path.Join(d.config.HtmlPrefix, api.RequestDummyAuthUrl), func(ctx echo.Context) error {
+		return d.HandleAuth(ctx)
+
+	})
+	r.GET(path.Join(d.config.HtmlPrefix, api.RequestDummyGetChallengeUrl), func(ctx echo.Context) error {
+		return d.HandleGetChallenge(ctx)
+
+	})
+	r.POST(path.Join(d.config.HtmlPrefix, api.RequestDummyCreateUrl), func(ctx echo.Context) error {
+		return d.HandleCreate(ctx)
+	})
 	return nil
 }
 
-func (auth *DummyAuth) HandleAuth(w http.ResponseWriter, r *http.Request) {
+func (auth *DummyAuth) HandleAuth(ctx echo.Context) error {
 	//method auth, create, validate
-	input, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
-	if nil != err {
-		tools.LOG_ERROR.Println("1 Failed with error code " + err.Error())
-		return
-	}
 	var authCommand api.RequestDummyAuthInput
-	err = json.Unmarshal(input, &authCommand)
-	if nil != err {
-		tools.LOG_ERROR.Println(fmt.Sprintf("Couldn't parse command %s\n with error: %s", input, err))
-		http.Error(w, "Couldn't parse command", http.StatusBadRequest)
-		return
+
+	if err := ctx.Bind(&authCommand); err != nil {
+		ctx.Error(fmt.Errorf("Couldn't parse command %w", err))
+		return nil
 	}
 	splittedElements := strings.Split(authCommand.ChallengeHash, ":")
 	if 2 != len(splittedElements) {
 		tools.LOG_ERROR.Println("Wrong Input")
-		http.Error(w, "Wrong command Input", http.StatusBadRequest)
-		return
+		return ctx.String(http.StatusBadRequest, "Wrong command Input")
 	}
 	account, _, err := auth.config.Db.GetAccount(Name, authCommand.Login)
-	if nil != err {
+	if err != nil {
 		tools.LOG_ERROR.Println("Unknown user ", authCommand.Login, " requested")
-		http.Error(w, fmt.Sprintf("Unknown user %s requested", authCommand.Login), http.StatusUnauthorized)
-		return
+
+		return ctx.String(http.StatusUnauthorized, fmt.Sprintf("Unknown user %s requested", authCommand.Login))
 	}
 	refInt, err := strconv.Atoi(authCommand.Ref)
-	if nil != err {
+	if err != nil {
 		tools.LOG_ERROR.Println("Invalid reference ", authCommand.Ref)
-		http.Error(w, fmt.Sprintf("Invalid Reference"), http.StatusUnauthorized)
-		return
+		return ctx.String(http.StatusUnauthorized, fmt.Sprintf("Invalid Reference"))
 	}
 	challenge, found := auth.challengeMap[refInt]
 	if !found {
 		tools.LOG_ERROR.Println("Challenge ,", authCommand.Ref, " not found ")
-		http.Error(w, fmt.Sprintf("Challenge ,%s not found", authCommand.Ref), http.StatusUnauthorized)
-		return
+		return ctx.String(http.StatusUnauthorized, fmt.Sprintf("Challenge ,%s not found", authCommand.Ref))
+
 	}
 
 	if challenge.apiChallenge.Challenge != splittedElements[0] {
 		tools.LOG_ERROR.Println("Incorrect Challenge Hash ", splittedElements[0], " received, expecting :", challenge.apiChallenge.Challenge)
-		http.Error(w, "Incorrect Challenge Hash", http.StatusUnauthorized)
-		return
+		return ctx.String(http.StatusUnauthorized, "Incorrect Challenge Hash")
+
 	}
 	authSpecific := account.Auths[Name]
 	if authSpecific.Blob != splittedElements[1] {
 		tools.LOG_ERROR.Println("Incorrect Password ", splittedElements[1], " received, expecting :", authSpecific.Blob)
-		http.Error(w, "Incorrect Password", http.StatusUnauthorized)
-		return
+		return ctx.String(http.StatusUnauthorized, "Incorrect Password")
+
 	}
 	challenge.timer.Stop()
 	delete(auth.challengeMap, refInt)
 	var apiAccount api.Account
 	err = types.AccountBackend2Api(account, &apiAccount)
-	if nil != err {
+	if err != nil {
 		tools.LOG_ERROR.Println("Convertion from backend Account to api Account failed")
-		http.Error(w, "Couldn't save session", http.StatusUnauthorized)
-		return
+
+		return ctx.String(http.StatusUnauthorized, "Couldn't save session")
 	}
 	result := api.RequestDummyAuthOutput{AuthenticationHeader: account.Email, MySelf: apiAccount}
 	session := types.Session{AuthenticationHeader: result.AuthenticationHeader, UserId: account.Id}
 	err = auth.config.Db.StoreSession(&session)
-	if nil != err {
+	if err != nil {
 		tools.LOG_ERROR.Println("Couldn't save session")
-		http.Error(w, "Couldn't save session", http.StatusUnauthorized)
-		return
+
+		return ctx.String(http.StatusUnauthorized, "Couldn't save session")
 	}
-	b, _ := json.Marshal(result)
-	io.WriteString(w, string(b))
+
+	return ctx.JSON(http.StatusOK, &result)
 }
-func (auth *DummyAuth) HandleCreate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.NotFound(w, r)
-		return
-	}
-	input, err := ioutil.ReadAll(r.Body)
-	r.Body.Close()
-	if nil != err {
-		tools.LOG_ERROR.Println("1 Failed with error code " + err.Error())
-		return
-	}
+
+func (auth *DummyAuth) HandleCreate(ctx echo.Context) error {
+
 	var create api.RequestDummyCreateInput
-	err = json.Unmarshal(input, &create)
-	if nil != err {
-		tools.LOG_ERROR.Println(fmt.Sprintf("Couldn't parse command %s\n with error: %s", input, err))
-		http.Error(w, "Couldn't parse command", http.StatusBadRequest)
-		return
+
+	if err := ctx.Bind(&create); err != nil {
+		return ctx.String(http.StatusBadRequest, "Couldn't parse command")
 	}
 	account := new(types.Account)
 	account.Auths = make(map[string]types.AccountSpecificAuth)
@@ -158,32 +147,30 @@ func (auth *DummyAuth) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	authSpecific := types.AccountSpecificAuth{AuthType: Name, Blob: create.Password}
 	account.Auths[Name] = authSpecific
 	//TODO This should be the sha1 from the password
-	err = auth.config.Db.AddAccount(account)
-	if nil != err {
+	err := auth.config.Db.AddAccount(account)
+	if err != nil {
 		errMessage := fmt.Sprintf("Couldn't save this account with error %s", err)
 		tools.LOG_ERROR.Println(errMessage)
-		http.Error(w, errMessage, http.StatusInternalServerError)
-		return
+
+		return ctx.String(http.StatusInternalServerError, errMessage)
 	}
 	var apiAccount api.Account
 	err = types.AccountBackend2Api(account, &apiAccount)
 	result := api.RequestDummyAuthOutput{AuthenticationHeader: account.Email, MySelf: apiAccount}
-	b, _ := json.Marshal(result)
-	io.WriteString(w, string(b))
+
+	return ctx.JSON(http.StatusOK, &result)
 }
-func (auth *DummyAuth) HandleValidateAccount(w http.ResponseWriter, r *http.Request) {
+func (auth *DummyAuth) HandleValidateAccount(ctx echo.Context) error {
+	return nil
 }
-func (auth *DummyAuth) HandleGetChallenge(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.NotFound(w, r)
-		return
-	}
+func (auth *DummyAuth) HandleGetChallenge(ctx echo.Context) error {
+
 	var chal challenge
 	var err error
 	chal.apiChallenge.Challenge, err = randutil.AlphaString(20)
-	if nil != err {
+	if err != nil {
 		tools.LOG_ERROR.Println(fmt.Sprintf("Failed to generate Random string with error: %s", err))
-		http.Error(w, "Failed to generate Random String", http.StatusBadRequest)
+		return ctx.String(http.StatusBadRequest, "Failed to generate Random String")
 	}
 	challengeId := auth.challengeId
 	chal.apiChallenge.Ref = strconv.Itoa(challengeId)
@@ -194,6 +181,6 @@ func (auth *DummyAuth) HandleGetChallenge(w http.ResponseWriter, r *http.Request
 	})
 
 	auth.challengeId += 1
-	b, _ := json.Marshal(chal.apiChallenge)
-	io.WriteString(w, string(b))
+
+	return ctx.JSON(http.StatusOK, chal.apiChallenge)
 }

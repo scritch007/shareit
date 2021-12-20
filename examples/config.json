@@ -25,6 +25,8 @@
 		"password": "a",
 		"email": "a@a.com"
 	},
+	"public": false,
+	"debug": false,
 	"user_accesses": [
 		{
 			"user":"b@b.com",
